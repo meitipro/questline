@@ -18,33 +18,22 @@ key, and a key in a build environment is a key in a log.
 
 ---
 
-## 0. Put it in git
+## 0. The repository
 
-Vercel deploys from a repository. This folder is not one yet:
+It is already one, and it is public:
 
-```bash
-cd "G:\GenLayer Works\Questline"
-git init -b main
-git add -A
-git commit -m "Questline: contract, site and scripts"
-```
+    https://github.com/meitipro/questline
 
-`.gitignore` already excludes `node_modules`, `.next`, `.env` and `.env.local`,
-so nothing secret can travel with that commit. Check it before you push:
+Eighty files. `.gitignore` keeps `node_modules`, `.next`, `.env*`, `.claude/`
+and this folder's launch material out, so `.env.example` is the only env file
+tracked and every value in it is empty. Worth re-checking before any push that
+adds files:
 
 ```bash
-git ls-files | Select-String -Pattern "env|key"
+git ls-files | Select-String -Pattern "env|key|pem"
 ```
 
-That should print nothing but `.env.example`. Then create an **empty** GitHub
-repo (no README, no licence) and push:
-
-```bash
-git remote add origin https://github.com/<you>/questline.git
-git push -u origin main
-```
-
----
+That should print nothing but `.env.example`.
 
 ## 1. Import into Vercel
 
