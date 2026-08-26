@@ -1,0 +1,44 @@
+# dependencies and build output
+node_modules/
+.next/
+out/
+build/
+*.tsbuildinfo
+
+# secrets. The deployer key is a real private key: it is generated locally, read
+# from the environment by the scripts, and must never be committed. .env.e2e
+# holds a throwaway key the end to end proof generates for itself.
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# logs and OS noise
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# editors and local tooling
+.idea/
+.vscode/
+.claude/
+
+# python bytecode
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Throwaway probes. These get written while checking something on chain, and one
+# of them very nearly rode into a commit.
+_*.mjs
+scripts/.*.mjs
+.e2e-build/
+
+# ---------------------------------------------------------------- not public
+#
+# The repository shows the work, and docs/DEPLOY.md is part of that: both of the
+# repos this one follows publish their deploy runbook. Launch material is not
+# engineering documentation, so it stays local.
+docs/VIDEO_PROMPT.md
