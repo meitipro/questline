@@ -1,8 +1,8 @@
 import { mono, sans } from "@/lib/fonts";
 import type { Metadata, Viewport } from "next";
 
-import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
+import { SiteFooter } from "@/components/SiteFooter";
+import { SiteHeader } from "@/components/SiteHeader";
 import { THEME_BOOT } from "@/components/ThemeToggle";
 import { ORIGIN } from "@/lib/chain";
 
@@ -59,11 +59,11 @@ export default function RootLayout({
           <a href="#main" className="skip-link">
             Skip to the world
           </a>
-          <Header />
+          <SiteHeader />
           <main id="main" style={{ flex: 1 }}>
             {children}
           </main>
-          <Footer />
+          <SiteFooter />
         </div>
       </body>
     </html>

@@ -65,11 +65,15 @@ export function ThemeToggle() {
       }
       title="Switch theme"
     >
-      <span aria-hidden style={{ width: 12, display: "inline-block" }}>
+      {/* A pill with the knob on the side the current theme sits on. The knob
+          carries the glyph rather than a label beside it, so the control keeps
+          one width in both states and the header does not shift when it flips. */}
+      <span
+        aria-hidden
+        className="theme-knob"
+        style={{ marginLeft: theme === "light" ? "auto" : 0 }}
+      >
         {theme === null ? "" : theme === "light" ? "☾" : "☀"}
-      </span>
-      <span style={{ minWidth: "3.2em", textAlign: "left" }}>
-        {theme === null ? "" : theme === "light" ? "DARK" : "LIGHT"}
       </span>
     </button>
   );

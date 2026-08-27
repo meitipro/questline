@@ -181,6 +181,20 @@ input:focus-visible {
 
 /* Keyboard readers should not have to tab through the whole header on every
  * page to reach the thing they came for. Visible only when focused. */
+/* Text that exists for a screen reader and for anything that does not run
+   JavaScript, while the visible version is being animated in beside it. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .skip-link {
   position: absolute;
   left: -9999px;
@@ -246,6 +260,136 @@ h3 {
   }
   100% {
     transform: translateX(100%);
+  }
+}
+
+/* ---------- the landing's animation vocabulary ----------
+ *
+ * Ported from the design file rather than re-timed by eye: the entrance delays
+ * are choreographed against each other (the orbit chips fly in at .6s through
+ * 2.3s, the lede lands at 2.8s, the buttons at 3.2s), so changing one number
+ * in isolation breaks a sequence somebody composed.
+ *
+ * Every one of these is disabled by the prefers-reduced-motion block above.
+ */
+
+/* The conic ring that travels around the primary button. Needs @property, or
+   the angle is interpolated as a string and the gradient jumps rather than
+   sweeps. Browsers without @property simply show a static border. */
+@property --border-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+@keyframes ql-border {
+  to {
+    --border-angle: 360deg;
+  }
+}
+
+@keyframes ql-spin-r {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes ql-spin-l {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes ql-fade-down {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes ql-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes ql-fade-up-sm {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes ql-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* The orbit chips arrive spinning and blurred, then settle. */
+@keyframes ql-fly-in {
+  from {
+    opacity: 0;
+    transform: scale(0.3) rotate(-180deg);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+    filter: blur(0);
+  }
+}
+
+/* step-end, so the caret is hard on and hard off rather than fading. */
+@keyframes ql-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* -50% and not -100%: the list is rendered twice, so half a loop is one full
+   pass and the seam never shows. */
+@keyframes ql-ticker {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes ql-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 
@@ -652,20 +796,198 @@ a.feed-row:hover {
 .theme-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 46px;
+  height: 26px;
+  padding: 2px;
   border: 1px solid var(--line);
-  background: transparent;
-  color: var(--muted);
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing: 0.08em;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.5);
   cursor: pointer;
   line-height: 1;
 }
 .theme-toggle:hover {
   border-color: var(--muted);
+}
+.theme-knob {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1;
+  transition: background 0.3s ease;
+}
+
+/* ---------- the site header ---------- */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  width: 100%;
+  max-width: 1920px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 24px clamp(20px, 3.4vw, 64px);
+  backdrop-filter: blur(10px);
+  animation: ql-fade-down 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Over the landing photograph the bar is transparent, so it must not blur or
+   it frosts the picture it is meant to sit on. Absolute rather than sticky:
+   the hero is a full-height flex column and a sticky header would take a row
+   out of it. */
+.site-header-over {
+  position: absolute;
+  left: 0;
+  right: 0;
+  backdrop-filter: none;
+}
+
+.site-nav-link {
+  position: relative;
+  font-size: 15px;
+  padding-bottom: 2px;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+.site-nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+.site-nav-link:hover::after,
+.site-nav-link[aria-current="page"]::after {
+  transform: scaleX(1);
+}
+
+/* ---------- the primary call to action ---------- */
+
+/* The ring is a conic gradient masked to a 3px band, rotated by animating the
+   registered --border-angle property. Without @property the angle cannot be
+   interpolated and browsers simply show it stationary, which is a fine
+   fallback. */
+.cta-ring {
+  position: relative;
+  display: inline-flex;
+  border-radius: 50px;
+  animation: ql-border 3s linear infinite;
+}
+.cta-ring::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50px;
+  padding: 3px;
+  background: conic-gradient(
+    from var(--border-angle),
+    var(--accent),
+    var(--ink),
+    var(--accent),
+    var(--ink),
+    var(--accent)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.cta-fill {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 50px;
+  background: var(--ink);
   color: var(--cream);
+  font-size: 15px;
+  font-weight: 500;
+  padding: 12px 26px;
+  white-space: nowrap;
+  transition: color 0.3s ease;
+}
+/* The fill slides in from the left on hover, under the label. */
+.cta-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  transform: translateX(-100%);
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 0;
+}
+.cta-fill:hover {
+  color: var(--on-accent);
+}
+.cta-fill:hover::after {
+  transform: translateX(0);
+}
+.cta-fill-lg {
+  font-size: 16px;
+  padding: 14px 28px;
+}
+
+/* The outline twin beside it. */
+.cta-ghost {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 50px;
+  padding: 14px 28px;
+  border: 1px solid rgba(239, 235, 226, 0.28);
+  color: #efebe2;
+  font-size: 16px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: border-color 0.3s ease;
+}
+.cta-ghost:hover {
+  border-color: #efebe2;
+  color: #efebe2;
+}
+
+/* The pointer badge under the hero buttons. Indented to sit under the middle
+   of the copy rather than aligned to it, which is what makes it read as an
+   annotation of the page instead of another element in the stack. */
+.hero-badge {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  margin-left: min(200px, 28%);
+  margin-top: 24px;
+}
+
+.footer-link {
+  color: var(--muted);
+  transition: color 0.15s ease;
+}
+.footer-link:hover {
+  color: var(--cream);
+}
+
+.feature-cell:hover {
+  background: var(--hover);
 }
 
 /* ---------- responsive ---------- */
@@ -701,9 +1023,47 @@ a.feed-row:hover {
   }
 }
 
+@media (max-width: 900px) {
+  /* The header carries a wordmark, four nav links, a theme pill, a wallet
+     button and a call to action. That is more than 320px of content long
+     before it is 320px of screen, and with justify-content:space-between it
+     does not wrap - it overflows, and takes every route with it because the
+     header is in the layout. Measured at 302px of sideways scroll on all
+     seven routes.
+
+     The nav goes first because every destination in it is also in the footer,
+     so nothing becomes unreachable. */
+  .site-nav {
+    display: none !important;
+  }
+  .site-header {
+    padding: 16px 18px;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 560px) {
+  /* Then the theme pill, which is a preference rather than a destination. */
+  .header-extras {
+    display: none !important;
+  }
+  .cta-fill {
+    font-size: 14px;
+    padding: 10px 18px;
+  }
+}
+
 @media (max-width: 760px) {
   .page {
     padding: 32px 18px 56px;
+  }
+  /* The hero stacks: the rings sit under the copy rather than beside it, and
+     the badge loses its indent because there is no column left to indent from. */
+  .hero-body {
+    padding-top: 96px !important;
+  }
+  .hero-badge {
+    margin-left: 0;
   }
   .display {
     font-size: 30px;

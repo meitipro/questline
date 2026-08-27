@@ -28,21 +28,24 @@ export function Mark({ size = 22 }: { size?: number }) {
         gridTemplateRows: "repeat(3, 1fr)",
         width: size,
         height: size,
-        border: "1.5px solid var(--cream)",
+        // currentColor, not a token: over the landing photograph the header
+        // fixes its own light colour in both themes, and the mark has to follow
+        // the wordmark beside it rather than flipping to near-black.
+        border: "1.5px solid currentColor",
         padding: inset,
         gap: 1,
         flex: "0 0 auto",
       }}
     >
-      <span style={dot("var(--cream)")} />
+      <span style={dot("currentColor")} />
       <span />
-      <span style={{ ...dot("var(--cream)"), justifySelf: "end" }} />
+      <span style={{ ...dot("currentColor"), justifySelf: "end" }} />
       <span />
       <span style={{ ...dot("var(--accent)"), placeSelf: "center" }} />
       <span />
-      <span style={{ ...dot("var(--cream)"), alignSelf: "end" }} />
+      <span style={{ ...dot("currentColor"), alignSelf: "end" }} />
       <span />
-      <span style={{ ...dot("var(--cream)"), justifySelf: "end", alignSelf: "end" }} />
+      <span style={{ ...dot("currentColor"), justifySelf: "end", alignSelf: "end" }} />
     </span>
   );
 }
