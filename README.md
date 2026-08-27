@@ -159,22 +159,28 @@ eyeballed, and the numbers are written down at the top of `app/globals.css`.
 themes; without it the primary button goes paper-on-orange in light.
 
 Every token pair the product actually uses passes WCAG AA in both themes - worst
-case 4.61:1 in dark and 4.52:1 in light - and a DOM sweep of all seven routes in
+case 4.61:1 in dark and 4.52:1 in light - and a DOM sweep of all eight routes in
 both themes reports no failures. Decorative glyphs (the `.` separators, the `×`
 and ` - ` bullets) are `aria-hidden`, which is why they are allowed to stay faint.
 
 ## Layout
 
     contracts/questline.py     the world: regions, registry, players, chronicle
-    contracts/test_helpers.py  227 checks over the deterministic halves
+    contracts/test_helpers.py  232 checks, and --json for the parity tests
+    contracts/README.md        the contract's own reference
     lib/chain.ts               the ONE place that picks the network
     lib/contract.ts            cached server reads, with a sample fallback
     lib/actions.ts             wallet writes, with a stage per transaction phase
     lib/useWallet.ts           shared wallet state, incl. account/chain changes
     lib/roll.ts                the roll recomputed in the browser
+    lib/absence.ts             "missing" told apart from "could not ask"
+    lib/outcomes.ts            the item registry and what a local turn may do
     lib/sample.ts              the seeded world, whose rolls verify
     app/api/*                  cached read routes, and the og share card
-    scripts/                   deploy, seed, check, admin, e2e
+    tests/parity/              the browser's arithmetic against the contract's
+    scripts/check.mjs          house style, as a check that fails
+    scripts/verify.mjs         reads the live world back and recomputes its rolls
+    scripts/                   deploy, seed, admin, e2e, lint-contract
 
 ### Routes
 
@@ -351,8 +357,9 @@ Four measured facts about the Studio network shape this code. None is guessed.
 - **IPv6 hangs.** Studio is Cloudflare on both stacks and the AAAA addresses time
   out, so Node - which tries IPv6 first - burns ten seconds per request and every
   server-side read looks like a dead network. `dns.setDefaultResultOrder("ipv4first")`
-  is set in `next.config.mjs` and in all three scripts, because the config is the
-  earliest module the server evaluates and a fix applied later is applied too late.
+  is set in `next.config.mjs` and in every script that reaches the chain, because
+  the config is the earliest module the server evaluates and a fix applied later
+  is applied too late.
 - **`gen_call` wants the EIP-55 checksummed address.** The all-lowercase spelling
   of a live contract answers "Contract not found", and the failure looks like an
   empty world rather than an error. `lib/chain.ts` never normalises the configured

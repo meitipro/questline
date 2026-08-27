@@ -683,7 +683,11 @@ a.feed-row:hover {
     grid-template-columns: 160px 1fr;
   }
   .hero {
-    grid-template-columns: 1fr !important;
+    /* minmax(0, 1fr), not 1fr. A bare `1fr` is `minmax(auto, 1fr)`, and the
+       auto minimum is the item's min-content width - so the track grew to the
+       311px the stat row below demanded and the whole page scrolled sideways
+       by 22px at 320. Measured, not guessed. */
+    grid-template-columns: minmax(0, 1fr) !important;
     gap: 36px !important;
     padding: 56px 32px 48px !important;
   }

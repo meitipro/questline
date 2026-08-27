@@ -1,4 +1,4 @@
-import type { Band, Effect, Line } from "./types";
+import type { Band, Line } from "./types";
 
 /**
  * The colour of a band, as a CSS variable rather than a hex literal.
@@ -166,16 +166,6 @@ export function shortAddr(address: string): string {
   if (!address) return "0x0000";
   return address.slice(0, 6).toLowerCase();
 }
-
-export const EFFECT_LABEL: Record<Effect, string> = {
-  none: "no effect",
-  damage: "damage",
-  heal: "heal",
-  gain_item: "gain_item",
-  lose_item: "lose_item",
-  move: "move",
-  discover: "discover",
-};
 
 /**
  * Which sentence to put beside a magnitude.

@@ -67,7 +67,7 @@ export default async function HomePage() {
       <section
         style={{
           display: "grid",
-          gridTemplateColumns: "1.15fr .85fr",
+          gridTemplateColumns: "minmax(0, 1.15fr) minmax(0, .85fr)",
           gap: 56,
           alignItems: "start",
           padding: "88px 32px 64px",
@@ -109,7 +109,7 @@ export default async function HomePage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
               gap: 24,
               marginTop: 64,
               borderTop: "1px solid var(--line)",
