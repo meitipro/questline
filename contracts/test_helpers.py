@@ -400,6 +400,9 @@ check("an exitless region traps you", caps("move", "the long stair", 4, exits=[]
 # A no effect result never carries a magnitude, because a chronicle line reading
 # "none, magnitude 3" is a line nobody can explain.
 check("nothing has no magnitude", caps("none", "", 3), ("none", "", 0))
+# And no target either. The model is free to return `effect: none` alongside the
+# thing it was thinking about, and a line that did nothing must not name it.
+check("nothing names nothing", caps("none", "brass key", 3), ("none", "", 0))
 
 check("discover survives on a success", caps("discover", "the second landing", 2), ("discover", "the second landing", 2))
 check("heal survives on a success", caps("heal", "self", 2), ("heal", "self", 2))

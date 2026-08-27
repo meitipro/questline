@@ -116,6 +116,14 @@ export interface Player {
   rank: number;
   /** item name -> the chronicle line index that granted it. */
   provenance: Record<string, number>;
+  /**
+   * The carried items that have already been minted.
+   *
+   * Published so the interface can show that it happened rather than offering
+   * a button that would charge a second fee for it. Optional because a world
+   * deployed before the contract recorded mints answers without the field.
+   */
+  minted?: string[];
 }
 
 export interface ChroniclePage {

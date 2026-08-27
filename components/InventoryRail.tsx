@@ -32,6 +32,12 @@ export function InventoryRail({
   mintPrice?: string;
   mintNote?: string;
 }) {
+  // A world deployed before the contract recorded mints answers with no field
+  // at all, and treating that as "nothing is minted" is the right reading: it
+  // keeps the old behaviour rather than hiding every button.
+  const mintedSet = new Set(player.minted ?? []);
+  const isMinted = (item: string) => mintedSet.has(item);
+
   return (
     <div className="panel pad-sm">
       <div className="label">{title}</div>
@@ -74,7 +80,19 @@ export function InventoryRail({
                   )}
                 </span>
 
-                {onMint ? (
+                {/* An already minted item shows the fact, not a button.
+                    The contract refuses a second mint outright, so offering
+                    one here would be inviting a wallet signature for a
+                    transaction that can only fail - and before the contract
+                    recorded mints, it was inviting a second fee. */}
+                {isMinted(item) ? (
+                  <span
+                    className="mono"
+                    style={{ marginTop: 6, fontSize: 12, color: "var(--success-text)" }}
+                  >
+                    minted
+                  </span>
+                ) : onMint ? (
                   <button
                     type="button"
                     className="chip"

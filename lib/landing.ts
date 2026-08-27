@@ -27,8 +27,6 @@ export const HERO = {
   lede: "The rules, the rolls and your inventory live on chain. Validators resolve what you type against rules you can read.",
   primary: "Enter the world",
   secondary: "Read the chronicle",
-  /** The little pointer badge, which is a real line from the seeded world. */
-  badge: "0x88a1 . roll 14 of 20 . partial",
 };
 
 export const FEATURES_INTRO = {
@@ -98,29 +96,35 @@ export const FAQS: { question: string; meta: string; answer: string }[] = [
 ];
 
 /**
- * The chips that orbit the counter, and where each one sits.
+ * WHERE the chips sit. Not who they are.
  *
- * `ring` picks which circle it rides, `angle` is its position in degrees, and
- * `delay` is when it flies in. The numbers are the design's own: the chips
- * arrive from the innermost ring outwards, which is why the delays climb with
- * the ring size rather than reading in source order.
+ * The design hard-codes eight addresses and their stats. Those are mock data,
+ * and a landing page that prints "0xd41e . 688 ACTIONS" beside a player count
+ * read from the chain is inventing seven eighths of what it shows. On a live
+ * world it would be inventing all of it.
+ *
+ * So this table is positions only, and the page fills them from the real
+ * leaderboard, in order. Fewer players than slots means fewer chips.
+ *
+ * `ring` picks which circle a slot rides, `angle` is its position in degrees,
+ * `delay` is when it flies in, and `detail` marks the slots big enough to
+ * carry a second line. The delays climb from the innermost ring outwards,
+ * which is why they do not read in source order.
  */
-export const ORBIT_CHIPS: {
+export const ORBIT_SLOTS: {
   ring: 0 | 1 | 2 | 3;
   angle: number;
   delay: number;
-  who: string;
-  detail?: string;
-  accent?: boolean;
+  detail: boolean;
 }[] = [
-  { ring: 0, angle: 270, delay: 0.6, who: "0xb5d0" },
-  { ring: 1, angle: 60, delay: 0.9, who: "0x09ff" },
-  { ring: 1, angle: 180, delay: 1.1, who: "0x88a1", detail: "412 ACTIONS . BEST 19" },
-  { ring: 1, angle: 300, delay: 1.3, who: "0x4e21" },
-  { ring: 2, angle: 130, delay: 1.5, who: "0xc2a7", detail: "574 ACTIONS . DEPTH 3" },
-  { ring: 3, angle: 30, delay: 1.7, who: "0x7b33" },
-  { ring: 3, angle: 95, delay: 1.9, who: "0xd41e", detail: "688 ACTIONS . BEST 20" },
-  { ring: 3, angle: 220, delay: 2.1, who: "0x2f0c", detail: "641 ACTIONS . DEPTH 4" },
+  { ring: 0, angle: 270, delay: 0.6, detail: false },
+  { ring: 1, angle: 60, delay: 0.9, detail: false },
+  { ring: 1, angle: 180, delay: 1.1, detail: true },
+  { ring: 1, angle: 300, delay: 1.3, detail: false },
+  { ring: 2, angle: 130, delay: 1.5, detail: true },
+  { ring: 3, angle: 30, delay: 1.7, detail: false },
+  { ring: 3, angle: 95, delay: 1.9, detail: true },
+  { ring: 3, angle: 220, delay: 2.1, detail: true },
 ];
 
 /**

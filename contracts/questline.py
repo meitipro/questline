@@ -415,6 +415,15 @@ class Questline(gl.Contract):
     #: can answer "which action gave me this" without walking the chronicle.
     item_source: TreeMap[str, u256]
 
+    #: "<lowercase address>|<item>" -> when it was minted.
+    #:
+    #: mint_item took a fee and wrote nothing, so the same item could be minted
+    #: again and again: the interface had no way to know it had already
+    #: happened, showed the same live button afterwards, and a second click
+    #: charged a second fee for no change in the world. A payable method with
+    #: no state to show for it is a method that can quietly bill twice.
+    minted: TreeMap[str, str]
+
     #: address -> every chronicle index that player appears in, oldest first.
     #:
     #: This index and the one above exist purely to keep the views off the
@@ -674,7 +683,14 @@ class Questline(gl.Contract):
             return (effect, target, mag)
 
         if effect == "none":
-            return ("none", target, 0)
+            # The target goes too. Every other no-op path here returns an empty
+            # one, and a stored line reading `effect: none, target: brass key`
+            # names something it did not touch - the reader has to decide
+            # whether the key moved, and the answer is on a different row.
+            # Consensus never saw this (`_decision` collapses none to
+            # "nothing"), so it was display only, which is exactly the kind of
+            # small dishonesty this contract is built to avoid.
+            return ("none", "", 0)
 
         return (effect, target, mag)
 
@@ -967,10 +983,17 @@ class Questline(gl.Contract):
         carried = [_normalise_item(x) for x in list(p.inventory)]
         if key not in carried:
             raise gl.vm.UserError(ERR_EXPECTED + " you are not carrying that")
+        mint_key = gl.message.sender_address.as_hex.lower() + "|" + key
+        if mint_key in self.minted:
+            raise gl.vm.UserError(ERR_EXPECTED + " you have already minted that item")
         if gl.message.value < self.mint_price:
             raise gl.vm.UserError(ERR_EXPECTED + " the mint fee is higher than that")
+        now = self._now()
+        # Recorded BEFORE the fee joins the pool, so there is no ordering in
+        # which the coins move and the record does not.
+        self.minted[mint_key] = now
         self.season_pool = u256(int(self.season_pool) + int(gl.message.value))
-        ItemMinted(gl.message.sender_address, item=key, at=self._now()).emit()
+        ItemMinted(gl.message.sender_address, item=key, at=now).emit()
 
     @gl.public.write
     def close_season(self) -> str:
@@ -1317,6 +1340,13 @@ class Questline(gl.Contract):
             if found is not None:
                 provenance[item] = int(found)
         blob["provenance"] = provenance
+        # Which of those are already minted, so the interface can show the fact
+        # rather than a button that would charge for it a second time.
+        blob["minted"] = [
+            item
+            for item in list(p.inventory)
+            if key + _normalise_item(item) in self.minted
+        ]
         blob["rank"] = 0
         ranked = self._ranking()
         for i in range(len(ranked)):

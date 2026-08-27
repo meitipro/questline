@@ -11,13 +11,23 @@
 import Link from "next/link";
 
 import { HERO } from "@/lib/landing";
-import type { World } from "@/lib/types";
+import { BAND_LONG, shortAddr } from "@/lib/format";
+import type { LeaderRow, Line, World } from "@/lib/types";
 
 import { OrbitRings } from "./OrbitRings";
 import { Ticker } from "./Ticker";
 import { TypedHeadline } from "./TypedHeadline";
 
-export function Hero({ world }: { world: World }) {
+export function Hero({
+  world,
+  leaders,
+  newest,
+}: {
+  world: World;
+  leaders: LeaderRow[];
+  /** The most recent resolved line, or null on a world with no lines yet. */
+  newest: Line | null;
+}) {
   return (
     <div style={{ position: "relative", display: "flex", flexDirection: "column", minHeight: "100vh" }}>
       <div
@@ -138,6 +148,11 @@ export function Hero({ world }: { world: World }) {
             </Link>
           </div>
 
+          {/* The design writes a line into this badge by hand. It is the
+              newest real one instead: a landing page that pins a fake result
+              next to a real count is doing the thing this product is against.
+              No lines yet means no badge, rather than a placeholder. */}
+          {newest ? (
           <div
             className="hero-badge"
             style={{ animation: "ql-fade-up-sm .8s cubic-bezier(.22,1,.36,1) 3.6s both" }}
@@ -163,12 +178,18 @@ export function Hero({ world }: { world: World }) {
                 borderRadius: 20,
               }}
             >
-              {HERO.badge}
+              {shortAddr(newest.who)} . roll {newest.roll} of {world.rules.die} .{" "}
+              {BAND_LONG[newest.band]}
             </span>
           </div>
+          ) : null}
         </div>
 
-        <OrbitRings players={world.counts.players} resolved={world.counts.actions} />
+        <OrbitRings
+          players={world.counts.players}
+          resolved={world.counts.actions}
+          leaders={leaders}
+        />
       </div>
 
       <Ticker regions={world.regions} />

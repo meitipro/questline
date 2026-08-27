@@ -16,7 +16,9 @@
 
 import { useEffect, useState } from "react";
 
-import { ORBIT_BOX, ORBIT_CHIPS, ORBIT_RINGS } from "@/lib/landing";
+import { ORBIT_BOX, ORBIT_RINGS, ORBIT_SLOTS } from "@/lib/landing";
+import { shortAddr } from "@/lib/format";
+import type { LeaderRow } from "@/lib/types";
 
 /**
  * How much of the design's 797px box actually fits here.
@@ -55,11 +57,29 @@ const RING_EDGE: React.CSSProperties = {
 export function OrbitRings({
   players,
   resolved,
+  leaders,
 }: {
   /** Read from the chain by the page, counted up to here. */
   players: number;
   resolved: number;
+  /** The real top of the board. Fills the slots in order, and a short board
+   *  simply leaves the outer slots empty rather than inventing a player. */
+  leaders: LeaderRow[];
 }) {
+  // Position from the design, identity from the chain.
+  //
+  // The four slots big enough for a second line are filled first, so the
+  // players worth reading about are the ones whose numbers are shown. Filling
+  // in slot order instead put rank one on the smallest chip and printed the
+  // stats of whoever happened to sit eighth.
+  //
+  // Positions are NOT reordered - each slot keeps its ring and angle, only the
+  // order they are handed a player changes.
+  const byPriority = ORBIT_SLOTS.map((slot, at) => ({ slot, at }))
+    .sort((a, b) => Number(b.slot.detail) - Number(a.slot.detail) || a.at - b.at)
+    .slice(0, leaders.length);
+
+  const chips = byPriority.map(({ slot }, i) => ({ ...slot, row: leaders[i] }));
   const [scale, setScale] = useState(1);
   const [count, setCount] = useState(players);
 
@@ -219,9 +239,9 @@ export function OrbitRings({
               </div>
             ) : null}
 
-            {ORBIT_CHIPS.filter((chip) => chip.ring === index).map((chip) => (
+            {chips.filter((chip) => chip.ring === index).map((chip) => (
               <div
-                key={chip.who + chip.angle}
+                key={chip.row.address + chip.angle}
                 style={{
                   position: "absolute",
                   left: "50%",
@@ -240,18 +260,18 @@ export function OrbitRings({
                       alignItems: "center",
                       gap: chip.detail ? 5 : undefined,
                       padding: chip.detail ? "13px 15px" : "9px 13px",
-                      border: `1px solid var(--${chip.accent ? "accent" : "line"})`,
-                      background: chip.accent ? "rgba(233,162,59,.14)" : "var(--panel)",
+                      border: "1px solid var(--line)",
+                      background: "var(--panel)",
                       whiteSpace: "nowrap",
                       boxShadow: "0 0 28px rgba(233,162,59,.32)",
                     }}
                   >
                     <span style={{ fontSize: chip.detail ? 14 : 13, color: "var(--cream)" }}>
-                      {chip.who}
+                      {shortAddr(chip.row.address)}
                     </span>
                     {chip.detail ? (
                       <span style={{ fontSize: 11, letterSpacing: ".14em", color: "var(--muted)" }}>
-                        {chip.detail}
+                        {chip.row.actions.toLocaleString("en-US")} ACTIONS . BEST {chip.row.best_roll}
                       </span>
                     ) : null}
                   </div>

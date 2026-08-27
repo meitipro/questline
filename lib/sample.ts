@@ -346,6 +346,9 @@ export function samplePlayer(address: string, now: Date = new Date()): Player {
     provenance: isYou
       ? { "rusted bar": 88109, "torn page": 88213, "lantern, wet": 87940 }
       : { "salt rope": 87880 },
+    // One of the carried items is already minted, so the rail demonstrates
+    // both states rather than only the one with a button on it.
+    minted: isYou ? ["lantern, wet"] : [],
   };
 }
 

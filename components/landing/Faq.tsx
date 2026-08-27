@@ -5,8 +5,8 @@
  *
  * Built on a real <button> with `aria-expanded` and a labelled region rather
  * than a div with a click handler, so it is reachable by keyboard and
- * announced correctly. The answer stays in the DOM when collapsed - it is
- * clipped by max-height, not removed - so the text is findable by the
+ * announced correctly. The answer stays in the DOM when collapsed - the row it
+ * sits in is collapsed to zero, not removed - so the text is findable by the
  * browser's own search and by a crawler.
  *
  * `hidden` is deliberately NOT used for that reason.
@@ -153,21 +153,39 @@ export function Faq() {
                         {item.meta}
                       </span>
                     </span>
+                    {/* Animated with grid-template-rows 0fr -> 1fr rather than
+                        a max-height. A max-height needs a number bigger than
+                        the tallest answer, and the tallest answer here already
+                        reached 216px of a 240px cap at 320px wide - one extra
+                        sentence in lib/landing.ts and it would have clipped
+                        silently. This has no ceiling to outgrow.
+
+                        The inner element needs min-height:0, for the same
+                        reason a grid item needs min-width:0: its automatic
+                        minimum is its content, which would refuse to collapse
+                        to zero. */}
                     <span
-                      id={panelId}
-                      role="region"
-                      aria-labelledby={buttonId}
                       style={{
-                        display: "block",
-                        overflow: "hidden",
-                        maxHeight: isOpen ? 240 : 0,
-                        transition: "max-height .5s ease",
-                        fontSize: 15,
-                        lineHeight: 1.6,
-                        color: "var(--body)",
+                        display: "grid",
+                        gridTemplateRows: isOpen ? "1fr" : "0fr",
+                        transition: "grid-template-rows .5s ease",
                       }}
                     >
-                      {item.answer}
+                      <span
+                        id={panelId}
+                        role="region"
+                        aria-labelledby={buttonId}
+                        style={{
+                          display: "block",
+                          overflow: "hidden",
+                          minHeight: 0,
+                          fontSize: 15,
+                          lineHeight: 1.6,
+                          color: "var(--body)",
+                        }}
+                      >
+                        {item.answer}
+                      </span>
                     </span>
                   </span>
                 </button>
