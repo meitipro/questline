@@ -7,6 +7,17 @@ import { SAMPLE_YOU } from "@/lib/sample";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Every page here reads the chain, so it is a function rather than a static
+ * file and it gets whatever ceiling the platform hands it - ten seconds on a
+ * Vercel hobby plan. lib/contract.ts caps each read at five seconds and falls
+ * back to the seeded world, so a page cannot legitimately need this much; the
+ * headroom is here so a slow-but-working chain degrades to the seeded world
+ * rather than to a gateway timeout, which is a page the visitor cannot read at
+ * all.
+ */
+export const maxDuration = 30;
+
 export const metadata: Metadata = {
   title: "Play",
   description:

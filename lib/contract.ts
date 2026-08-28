@@ -69,16 +69,58 @@ function client() {
   return createClient({ chain: CHAIN as any });
 }
 
+/**
+ * How long a single read may take before the page gives up on it.
+ *
+ * There was no deadline at all, and a configured-but-unreachable contract made
+ * the pages take between eleven and TWENTY-ONE seconds before falling back to
+ * the seeded world. Measured against a production build pointed at an address
+ * that does not exist, which is exactly the state a wrong env var or a Studio
+ * outage produces.
+ *
+ * That is not slow, it is broken: a serverless function is killed long before
+ * twenty-one seconds, so the visitor gets a gateway timeout instead of the
+ * page that was one fallback away from rendering perfectly.
+ *
+ * Five seconds is well past a healthy Studio read (they land in hundreds of
+ * milliseconds) and well inside any platform's limit.
+ */
+const READ_DEADLINE_MS = 5_000;
+
+/**
+ * The read, or a rejection at the deadline, whichever comes first.
+ *
+ * Losing the race does not cancel the underlying request - there is no abort
+ * signal through genlayer-js's readContract - so the fetch runs on and its
+ * result is simply ignored. That is acceptable here: the caller has already
+ * degraded to the seeded world, and an orphaned read writes nothing.
+ */
+function withDeadline<T>(work: Promise<T>, what: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  return Promise.race([
+    work.finally(() => clearTimeout(timer)),
+    new Promise<T>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error(`${what} did not answer within ${READ_DEADLINE_MS}ms`)),
+        READ_DEADLINE_MS
+      );
+    }),
+  ]);
+}
+
 async function callView(functionName: string, args: unknown[]): Promise<string> {
   const key = `${functionName}(${JSON.stringify(args)})`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < TTL_MS) return hit.value as string;
 
-  const raw = await client().readContract({
-    address: QUESTLINE,
-    functionName,
-    args: args as any,
-  });
+  const raw = await withDeadline(
+    client().readContract({
+      address: QUESTLINE,
+      functionName,
+      args: args as any,
+    }),
+    functionName
+  );
 
   // Most views answer with a json string, but verify_roll answers with a u256,
   // which genlayer-js decodes to a bigint. JSON.stringify throws outright on a
