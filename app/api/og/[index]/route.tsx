@@ -1,5 +1,7 @@
 import { ImageResponse } from "next/og";
 
+import { HOST } from "@/lib/chain";
+
 /**
  * The share card for one chronicle line.
  *
@@ -161,7 +163,7 @@ export async function GET(
           </div>
           {/* The permalink is on the card on purpose: it is the thing that lets
               anyone check the card against the line it claims to show. */}
-          <div>{line ? `/chronicle/${line.index}` : "questline.world"}</div>
+          <div>{line ? `/chronicle/${line.index}` : HOST}</div>
         </div>
       </div>
     ),

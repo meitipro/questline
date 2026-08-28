@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 
 import { SampleNote } from "@/components/SampleNote";
 import { ShareLine } from "@/components/ShareLine";
-import { NETWORK_LABEL, ORIGIN } from "@/lib/chain";
+import { HOST, NETWORK_LABEL, ORIGIN } from "@/lib/chain";
 import { getLine, verifyRollOnChain } from "@/lib/contract";
 import {
   BAND_COLOR,
@@ -136,7 +136,9 @@ export default async function LinePage({
       </div>
 
       <article className="panel" style={{ marginTop: 20, padding: 34 }}>
-        <div className="label">questline.world/chronicle/{line.index}</div>
+        <div className="label">
+          {HOST}/chronicle/{line.index}
+        </div>
 
         <p
           style={{

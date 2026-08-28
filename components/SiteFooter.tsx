@@ -14,7 +14,7 @@
 import Link from "next/link";
 
 import { Mark } from "./Mark";
-import { ORIGIN } from "@/lib/chain";
+import { HOST } from "@/lib/chain";
 
 const LINKS = [
   { href: "/play", label: "Play" },
@@ -60,10 +60,6 @@ const ICONS = [
 ];
 
 export function SiteFooter() {
-  // The host without a scheme, so the wordmark reads as a name rather than a
-  // url. ORIGIN is the one place the domain is configured.
-  const host = ORIGIN.replace(/^https?:\/\//, "");
-
   return (
     <footer style={{ position: "relative", background: "var(--ink)", borderTop: "1px solid var(--line)" }}>
       <div style={{ maxWidth: 1080, margin: "0 auto", padding: "72px clamp(20px, 3.4vw, 64px)" }}>
@@ -78,7 +74,7 @@ export function SiteFooter() {
           }}
         >
           <Mark size={26} />
-          <span style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-.03em" }}>{host}</span>
+          <span style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-.03em" }}>{HOST}</span>
         </Link>
 
         <nav

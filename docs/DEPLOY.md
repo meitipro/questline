@@ -68,7 +68,7 @@ Notes that will save you an afternoon:
   `VERCEL_PROJECT_PRODUCTION_URL` into the client bundle, so permalinks are
   correct on a fresh deploy with nothing configured. Set it only when you have a
   real domain, and set it to the origin with no trailing slash:
-  `https://questline.world`.
+  `https://questline.worlds`.
 - **Never add `QUESTLINE_DEPLOYER_KEY`.** The site never signs anything. Every
   write - entering the world, acting, buying a pass, minting - is signed by the
   player's own wallet in their own browser. The server holds no key and needs
@@ -151,7 +151,7 @@ curl https://<your-app>.vercel.app/api/line/0
 
 ## A custom domain
 
-**Settings → Domains → Add** `questline.world`, then at your registrar:
+**Settings → Domains → Add** `questline.worlds`, then at your registrar:
 
 | type | name | value |
 | --- | --- | --- |
@@ -160,7 +160,7 @@ curl https://<your-app>.vercel.app/api/line/0
 
 Vercel shows the exact records for your case and verifies them itself - prefer
 what the dashboard tells you over the table above if they differ. Once it is
-live, set `NEXT_PUBLIC_ORIGIN=https://questline.world` and redeploy, so
+live, set `NEXT_PUBLIC_ORIGIN=https://questline.worlds` and redeploy, so
 chronicle permalinks and share cards stop pointing at the `.vercel.app` host.
 
 ## Things that go wrong

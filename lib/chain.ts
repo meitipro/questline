@@ -151,4 +151,15 @@ export const ORIGIN =
   process.env.NEXT_PUBLIC_ORIGIN ||
   (VERCEL_PRODUCTION_URL
     ? `https://${VERCEL_PRODUCTION_URL}`
-    : "https://questline.world");
+    : "https://questline.worlds");
+
+/**
+ * The same thing without the scheme, for places that print the domain as a
+ * name rather than link to it.
+ *
+ * Derived rather than written down. The domain appeared as a literal in the
+ * footer, the share card and the permalink label, so changing it meant finding
+ * four files and missing one; now it is this constant and the env var behind
+ * it.
+ */
+export const HOST = ORIGIN.replace(/^https?:\/\//, "").replace(/\/$/, "");
