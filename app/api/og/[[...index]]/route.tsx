@@ -24,11 +24,26 @@ const BAND: Record<string, string> = {
   success: "#6FA97B",
 };
 
+/**
+ * An OPTIONAL catch-all, so one file serves two jobs:
+ *
+ *   /api/og/88213  the card for that chronicle line
+ *   /api/og        the card for the site itself
+ *
+ * The site needed one because the landing page declared
+ * `twitter:card: summary_large_image` and then supplied no image at all - the
+ * url most likely to be shared rendered as a bare text card, while every
+ * chronicle line had a picture. The generic branded card below was already
+ * written as the fallback for a line that does not exist; this just gives it a
+ * url of its own rather than duplicating it into a second route.
+ */
 export async function GET(
   request: Request,
-  { params }: { params: { index: string } }
+  { params }: { params: { index?: string[] } }
 ) {
-  const index = Number(params.index);
+  // undefined for /api/og, ["88213"] for /api/og/88213. NaN falls through to
+  // the generic card by the same path a missing line already takes.
+  const index = Number(params.index?.[0]);
 
   /* The card is built from the line the chain holds, fetched by index, rather
    * than from text handed in as query parameters. A card that rendered whatever
@@ -49,6 +64,9 @@ export async function GET(
   } | null = null;
 
   try {
+    // No index means the site card, so there is nothing to fetch and no reason
+    // to spend a round trip discovering that.
+    if (!Number.isFinite(index)) throw new Error("no line requested");
     const response = await fetch(`${origin}/api/line/${index}`, {
       cache: "no-store",
     });

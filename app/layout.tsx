@@ -23,8 +23,23 @@ export const metadata: Metadata = {
     url: ORIGIN,
     siteName: "Questline",
     type: "website",
+    /* The site card. Without this the landing declared summary_large_image and
+     * supplied no image, so the one url anybody actually shares rendered as a
+     * bare line of text while every chronicle line had a picture. A chronicle
+     * line page overrides this with its own card in generateMetadata. */
+    images: [
+      {
+        url: `${ORIGIN}/api/og`,
+        width: 1200,
+        height: 630,
+        alt: "Questline - nobody here can cheat. Not even us.",
+      },
+    ],
   },
-  twitter: { card: "summary_large_image" },
+  twitter: {
+    card: "summary_large_image",
+    images: [`${ORIGIN}/api/og`],
+  },
 };
 
 export const viewport: Viewport = {

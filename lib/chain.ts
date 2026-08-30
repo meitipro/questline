@@ -151,7 +151,7 @@ export const ORIGIN =
   process.env.NEXT_PUBLIC_ORIGIN ||
   (VERCEL_PRODUCTION_URL
     ? `https://${VERCEL_PRODUCTION_URL}`
-    : "https://questline.worlds");
+    : "https://www.questline.world");
 
 /**
  * The same thing without the scheme, for places that print the domain as a
