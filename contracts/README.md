@@ -161,7 +161,7 @@ base64 encoded under `e.cause.data.receipt.result`, not in the error message.
 ## Tests
 
 ```bash
-python contracts/test_helpers.py          # 232 checks, plain Python, no GenVM
+python contracts/test_helpers.py          # 233 checks, plain Python, no GenVM
 python contracts/test_helpers.py --json   # the same answers, for tests/parity
 npm run lint:contract                     # genvm-lint check: AST pass and SDK load
 npm test                                  # house style, parity, and the above
@@ -180,6 +180,47 @@ Works".
 validate` cannot find a class by the latter name and reports "No contract class
 found" for a contract that is completely fine, so half the linter silently did
 nothing until the class was renamed.
+
+## Prompt injection
+
+Player text is wrapped in `<player_action>` tags, the criteria tell validators
+to treat the contents as speech inside the world, and **angle brackets are
+stripped before the text is sent**. That last part is the actual defence:
+wrapping untrusted text in a tag is not a fence if the text can close the tag,
+so the cheapest complete answer is for the character not to survive the trip.
+
+An attempt is published in the chronicle like any other action, which makes it
+funny rather than dangerous. There is a seeded line demonstrating exactly this:
+a player tells the archive it is its administrator and asks for a sword, and the
+archive does not speak that language.
+
+## The views do not walk the chronicle
+
+`item_source` and `lines_by_player` are indexes maintained on write, so a
+character sheet costs one lookup per carried item instead of a backwards scan of
+every line ever resolved. The scan was fine at a hundred lines and would have
+blown the compute limit at a hundred thousand. A view that cannot be called is a
+view that does not exist, and this product's whole claim is that anyone can read
+the world back.
+
+## The criteria come from the contract
+
+`get_world()` returns the exact task and criteria strings the validators were
+handed, and `/world` renders those rather than a copy. A paraphrase in
+TypeScript would drift, and "the rules are the product" stops being true the
+moment the published rules and the applied rules are two different strings.
+
+`contracts/test_helpers.py` guards this: it compares the contract's criteria
+against what the seeded world quotes, whole lines rather than a prefix. An
+earlier version compared only the first seventy characters and cheerfully passed
+when a rule was inverted after them.
+
+## No stored achievement flags, and no holder counts
+
+Every achievement is derived from public state when a character sheet is read.
+Counting holders would mean either walking the whole roster on every page view,
+or keeping a tally the operator maintains. The second is exactly the kind of
+number this product has no business asking anyone to trust.
 
 ## Deploy
 

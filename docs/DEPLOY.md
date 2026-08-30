@@ -163,6 +163,43 @@ what the dashboard tells you over the table above if they differ. Once it is
 live, set `NEXT_PUBLIC_ORIGIN=https://www.questline.world` and redeploy, so
 chronicle permalinks and share cards stop pointing at the `.vercel.app` host.
 
+## Four measured facts about Studio
+
+None of these is guessed, and each one shapes code you will otherwise be tempted
+to simplify.
+
+- **IPv6 hangs.** Studio is Cloudflare on both stacks and the AAAA addresses
+  time out, so Node - which tries IPv6 first - burns ten seconds per request and
+  every server side read looks like a dead network.
+  `dns.setDefaultResultOrder("ipv4first")` is set in `next.config.mjs` and in
+  every script that reaches the chain, because the config is the earliest module
+  the server evaluates and a fix applied later is applied too late.
+- **`gen_call` wants the EIP-55 checksummed address.** The all lowercase
+  spelling of a live contract answers "Contract not found", and the failure
+  looks like an empty world rather than an error. `lib/chain.ts` never
+  normalises the configured address and warns on startup if it looks
+  unchecksummed. This is the *opposite* of the rule inside the contract, where a
+  TreeMap key must be lowercased on both sides.
+- **About thirty reads a minute.** The read cache is twenty seconds for that
+  reason alone; nothing depends on it for correctness. Each read also carries a
+  five second deadline, so a hung socket degrades the page to the seeded world
+  rather than to a gateway timeout.
+- **A payout never reaches a wallet.** `emit_transfer` is delivered as a
+  contract call and an ordinary wallet is not a contract, so the transfer is
+  refused as its own transaction: the contract is debited, the payee is not
+  credited, and because the transfer fires on finality the verdict cannot roll
+  back. `/season` says this out loud rather than printing "paid" over a balance
+  that will not move.
+
+## One frontend trap worth knowing
+
+**A `loading.tsx` cannot sit above a route that calls `notFound()`.** A loading
+file creates a Suspense boundary, and Next flushes the shell - status line
+included - before the page resolves, so `notFound()` can only swap the content
+afterwards. The route then answers 200 with not found content, which is a soft
+404 a crawler will index. The loading states therefore live on `/play`, `/world`
+and `/season` only; `/chronicle/[index]` and `/c/[player]` have none.
+
 ## Things that go wrong
 
 **The banner will not go away.** The address is set in the wrong environment, or
