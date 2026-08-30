@@ -24,7 +24,7 @@ It is already one, and it is public:
 
     https://github.com/meitipro/questline
 
-Eighty files. `.gitignore` keeps `node_modules`, `.next`, `.env*`, `.claude/`
+86 files. `.gitignore` keeps `node_modules`, `.next`, `.env*`, `.claude/`
 and this folder's launch material out, so `.env.example` is the only env file
 tracked and every value in it is empty. Worth re-checking before any push that
 adds files:
@@ -33,7 +33,7 @@ adds files:
 git ls-files | Select-String -Pattern "env|key|pem"
 ```
 
-That should print nothing but `.env.example`.
+That should print `.env.example` and `next-env.d.ts`, and nothing else.
 
 ## 1. Import into Vercel
 
@@ -208,7 +208,7 @@ you have not redeployed since setting it, or it failed the
 
 **`"live": false` with a timeout.** Studio is rate limited relative to a local
 node. The API routes already allow 30 seconds via `maxDuration`; if you are
-hitting that, the read cache in `lib/contract.ts` (4 seconds) and the CDN header
+hitting that, the read cache in `lib/contract.ts` (20 seconds) and the CDN header
 on each route are the levers.
 
 **Every write fails but reads work.** The player's wallet is on the wrong chain.

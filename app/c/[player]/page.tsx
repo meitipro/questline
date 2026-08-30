@@ -49,7 +49,6 @@ export default async function CharacterPage({
   ]);
 
   const now = new Date();
-  const achievements = achievementsFor(player.data, world.data);
 
   // A read that failed cannot say a character does not exist. Only the contract
   // answering `exists: false` can, and that is what "absent" means here.
@@ -105,6 +104,15 @@ export default async function CharacterPage({
       </div>
     );
   }
+
+  /* Computed here and not beside the reads, because the contract answers an
+   * address that never entered with `{ address, exists: false }` and nothing
+   * else. `achievementsFor` reads `player.inventory.length`, so running it
+   * before the guard above threw on the absent payload and served the error
+   * boundary instead of the "never entered the world" page - for any
+   * well-formed address a visitor might paste. Dormant only while no contract
+   * is configured, because the seeded fallback always has an inventory. */
+  const achievements = achievementsFor(player.data, world.data);
 
   return (
     <div className="page">

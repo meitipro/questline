@@ -2,7 +2,7 @@
  * Read the live contract and check it against the app's own arithmetic.
  *
  *   $env:NEXT_PUBLIC_QUESTLINE_ADDRESS = "0x..."
- *   npm run check
+ *   npm run verify
  *
  * This is not a smoke test of the rpc. It reads the world, then takes the
  * newest chronicle lines and recomputes every roll from the line's own public

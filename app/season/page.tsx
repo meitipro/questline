@@ -30,13 +30,23 @@ export const metadata: Metadata = {
 
 export default async function SeasonPage() {
   const [board, world] = await Promise.all([getLeaderboard(20), getWorld()]);
+
+  /* The banner reports on EVERY read the page made, not just one of them.
+   * Each of these pages issues two or three independent reads, and reporting
+   * on one meant a page could show seeded data from a failed read under a
+   * banner saying it was live. On /season that reached a wallet: the pass card
+   * signs `world.data.season.pass_price` as the transaction value, so a rate
+   * limited get_world beside a cached get_leaderboard would have offered the
+   * seeded price with nothing on the page saying so. */
+  const live = board.live && world.live;
+  const readError = board.error ?? world.error;
   const now = new Date();
   const { season, rows, past } = board.data;
   const definitions = achievementDefinitions(world.data);
 
   return (
     <div className="page">
-      <SampleNote live={board.live} error={board.error} />
+      <SampleNote live={live} error={readError} />
 
       <div
         style={{
@@ -44,7 +54,7 @@ export default async function SeasonPage() {
           gridTemplateColumns: "1fr 1fr",
           gap: 24,
           alignItems: "end",
-          marginTop: board.live ? 0 : 24,
+          marginTop: live ? 0 : 24,
         }}
         className="two-up"
       >

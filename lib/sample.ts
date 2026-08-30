@@ -283,7 +283,7 @@ const LEADERS = [
   { address: P.a09ff, actions: 388, depth: 3, best_roll: 19 },
   { address: P.a7b33, actions: 301, depth: 2, best_roll: 18 },
   { address: P.a4e21, actions: 264, depth: 2, best_roll: 17 },
-  { address: P.ab5d0, actions: 219, depth: 1, best_roll: 16 },
+  { address: P.ab5d0, actions: 219, depth: 2, best_roll: 16 },
 ];
 
 export function sampleLeaderboard(): Leaderboard {
@@ -345,7 +345,7 @@ export function samplePlayer(address: string, now: Date = new Date()): Player {
     rank,
     provenance: isYou
       ? { "rusted bar": 88109, "torn page": 88213, "lantern, wet": 87940 }
-      : { "salt rope": 87880 },
+      : { "salt rope": 87940 },
     // One of the carried items is already minted, so the rail demonstrates
     // both states rather than only the one with a button on it.
     minted: isYou ? ["lantern, wet"] : [],

@@ -122,7 +122,18 @@ export function PlayConsole({
         return;
       }
 
-      if (blob?.data) setPlayer(blob.data as Player);
+      /* `exists: false` is a real answer, not a character. The contract sends
+       * `{ address, exists: false }` and nothing else for an address that has
+       * never called enter, so committing it as a Player gave the rail and the
+       * meter an object with no inventory and no energy to read, and they threw
+       * on `player.inventory.length`.
+       *
+       * That was the whole first run: connect a fresh wallet, and the page
+       * crashed before it could offer to enter the world. Dormant only because
+       * no contract is configured, since the seeded fallback always has an
+       * inventory. */
+      const fresh = blob?.data as Player | undefined;
+      if (fresh?.exists) setPlayer(fresh);
       if (Array.isArray(blob?.lines) && blob.lines.length > 0) {
         setFeed(blob.lines.map((line: Line) => ({ line, origin: "chain" as Origin })));
       }
@@ -196,7 +207,7 @@ export function PlayConsole({
       setTimeout(
         () =>
           setStage(
-            "leader proposed a result . validators are grading it against the criteria"
+            "leader proposed a result . validators are resolving it independently"
           ),
         900
       )
@@ -610,7 +621,10 @@ export function PlayConsole({
 
       {/* ---- the rail ---- */}
       <aside className="rail">
-        {player ? (
+        {/* `player.exists` rather than `player`, for the same reason the commit
+            above checks it: a character that is not in storage has no inventory
+            for these two to render. */}
+        {player?.exists ? (
           <>
             <EnergyMeter
               player={player}

@@ -228,18 +228,23 @@ export default async function WorldPage() {
         </div>
       </div>
 
-      {/* ---- the honest limit ---- */}
+      {/* ---- how a turn settles ---- */}
       <div className="panel pad" style={{ marginTop: 36 }}>
-        <div className="label">WHAT THIS PRODUCT CANNOT DO</div>
+        {/* This panel was headed WHAT THIS PRODUCT CANNOT DO and listed three
+            absences. The facts were right and the framing was backwards: each
+            one is a mechanism doing its job, and a page arguing that the rules
+            are the product should name the rule rather than apologise for its
+            shape. */}
+        <div className="label">HOW A TURN SETTLES</div>
         <p className="lede" style={{ marginTop: 12, maxWidth: "72ch", color: "var(--cream)" }}>
-          Consensus takes longer than a game loop, so this is not a real time
-          game. Actions are deliberate and scarce. A turn takes as long as several
-          strangers need to agree on what happened.
+          A turn takes as long as several strangers need to agree on what
+          happened. That is the cost of the guarantee, and it is why actions are
+          deliberate and scarce rather than continuous.
         </p>
         <p className="note" style={{ marginTop: 14, maxWidth: "72ch" }}>
-          Two more limits worth saying out loud. The narration is written by a
-          model, so its prose varies between turns even where the rules do not -
-          only the effect, the target and the magnitude are held to the criteria.
+          Two more things the shape decides. The narration is written by a
+          model, so its prose varies between turns even where the rules do not:
+          the effect, the target and the magnitude are what the criteria hold.
           And an appeal costs the protocol bond, which is deliberately larger than
           any single action is worth, so appealing is a season ending move rather
           than a turn by turn one.

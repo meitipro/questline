@@ -34,8 +34,15 @@ export function achievementsFor(player: Player, world: World): Achievement[] {
     },
     {
       name: "Read the archive aloud",
-      body: "Carry something the world only gives to a discover effect.",
-      measure: `${player.inventory.length} of ${registrySize} registry items carried`,
+      // The rule named a `discover` effect, and no discover has ever granted
+      // an item: `gain_item` is the only effect in the contract that appends to
+      // an inventory. The measure was worse - it counted registry items carried
+      // while the badge tested for one specific item, so two players could read
+      // the identical sentence and get opposite badges.
+      body: "Carry the torn page, which a resolved action granted through a gain_item effect.",
+      measure: player.inventory.includes("torn page")
+        ? "the torn page is in your inventory"
+        : `not carried . ${player.inventory.length} of ${registrySize} registry items held`,
       held: player.inventory.includes("torn page"),
     },
     {
@@ -74,7 +81,7 @@ export function achievementDefinitions(world: World): Omit<Achievement, "held" |
     },
     {
       name: "Read the archive aloud",
-      body: "Carry an item the world only grants through a discover effect. Checked against the inventory the contract holds for you.",
+      body: "Carry the torn page. Only a gain_item effect appends to an inventory, so the badge is a fact about contract storage rather than a claim.",
     },
     {
       name: "Cartographer",

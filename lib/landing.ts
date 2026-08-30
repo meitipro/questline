@@ -38,7 +38,7 @@ export const FEATURES_INTRO = {
 export const FEATURES: { title: string; body: string }[] = [
   {
     title: "Rolls anyone can recompute",
-    body: "Seeded from the action and its timestamp, computed in the deterministic half, and published beside the outcome.",
+    body: "Seeded from the timestamp, the player and the line index, computed in the deterministic half, and published beside the outcome.",
   },
   {
     title: "Rules pinned to a version",
@@ -73,7 +73,7 @@ export const FAQS: { question: string; meta: string; answer: string }[] = [
     question: "How is a dice roll verified?",
     meta: "Rolls",
     answer:
-      "Every line publishes its seed: the action, the timestamp the contract hashed and the line index. Hash them the way the contract does and you get the same number, or the line is wrong.",
+      "Every line publishes its seed: the timestamp the contract hashed, the player and the line index. Hash those three the way the contract does and you get the same number, or the line is wrong.",
   },
   {
     question: "What stops the studio minting a rare item?",

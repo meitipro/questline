@@ -49,13 +49,41 @@ function expect(label, cond, detail = "") {
   }
 }
 
-async function rpc(method, params) {
-  const res = await fetch(RPC, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-  });
-  return res.json();
+/**
+ * One json-rpc call, retried on a connection that never opened.
+ *
+ * Studio sits behind Cloudflare and resolves to several edge addresses, and
+ * Node's fetch picks one and stays with it. When that one is unreachable the
+ * call dies with a bare "fetch failed" whose cause is `Connect Timeout Error
+ * (attempted addresses: 188.114.99.0:443)` while curl, which tries the others,
+ * succeeds against the same hostname in the same second.
+ *
+ * That is not a failure worth aborting an end to end run over, and it read as
+ * one: the faucet step is the second thing this script does, so a single
+ * unlucky address made the whole proof look broken. Retrying re-resolves and
+ * usually lands on a different edge.
+ */
+async function rpc(method, params, attempts = 12) {
+  let last;
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      const res = await fetch(RPC, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+      });
+      return await res.json();
+    } catch (e) {
+      last = e;
+      const why = String(e?.cause?.message ?? e?.message ?? e);
+      if (i < attempts) {
+        console.log(`  . ${method} could not connect (${why}), retry ${i}`);
+        await sleep(1500 * i);
+        continue;
+      }
+    }
+  }
+  throw last;
 }
 
 /** Studio drops TLS connections often, so every write gets a few attempts. */

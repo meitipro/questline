@@ -331,11 +331,29 @@ class Player:
     # Start of the energy cycle this player is currently inside.
     cycle_started: str
     joined: str
+    # Lifetime, across every season. Shown on a character sheet.
     actions: u256
     best_roll: u256
     depth: u256
-    # A season pass is what puts a player on the ranked board and in the pool.
-    ranked: bool
+    #: Which season this player holds a pass for. Zero means none, ever.
+    #:
+    #: A BOOLEAN HERE WAS A PAYOUT BUG WITH NO REMEDY. `ranked` was set true by
+    #: buy_season_pass and never set back, and `open_season` resets nothing per
+    #: player, so season one's pass holders stayed on the board in season two,
+    #: carrying season one's action count, and were paid out of a pool that was
+    #: entirely somebody else's money. They could not even opt in honestly:
+    #: buy_season_pass refuses a second pass. No owner method can clear a
+    #: player, so on the old shape the first season boundary meant a redeploy.
+    #:
+    #: Comparing against season_number makes the pass expire by arithmetic
+    #: rather than by anyone remembering to expire it, and costs no write at the
+    #: boundary - which matters, because the roster is unbounded and append
+    #: only, so walking it inside open_season would eventually not fit.
+    pass_season: u256
+    #: Actions and best roll WITHIN the season the pass was bought for. Reset
+    #: when a pass is bought, so a season's board scores that season's play.
+    season_actions: u256
+    season_best: u256
 
 
 @allow_storage
@@ -682,6 +700,24 @@ class Questline(gl.Contract):
                 return ("none", "", 0)
             return (effect, target, mag)
 
+        # Fields consensus never looked at are not stored as if it had.
+        #
+        # `_decision` collapses `discover` to ("nothing", "", 0), so a leader
+        # could attach any target and any magnitude up to the band cap and a
+        # validator answering a plain `none` still agreed. The line then
+        # published "magnitude 4, capped at 4 by the region" that no node ever
+        # agreed to. The place name survives in the narration, which is where a
+        # discovery belongs; the magnitude does not, because a discovery moves
+        # nothing.
+        if effect == "discover":
+            return ("discover", "", 0)
+
+        # Same rule, other direction: `_decision` drops the target for these
+        # two because it is always the player, so an un-agreed string must not
+        # ride along in its place.
+        if effect in ("damage", "heal"):
+            return (effect, "self", mag)
+
         if effect == "none":
             # The target goes too. Every other no-op path here returns an empty
             # one, and a stored line reading `effect: none, target: brass key`
@@ -714,8 +750,10 @@ class Questline(gl.Contract):
         p.joined = now
         p.actions = u256(0)
         p.best_roll = u256(0)
+        p.pass_season = u256(0)
+        p.season_actions = u256(0)
+        p.season_best = u256(0)
         p.depth = self.regions[0].depth
-        p.ranked = False
         self.roster.append(who)
 
         PlayerEntered(who, region=self.regions[0].name, at=now).emit()
@@ -910,6 +948,11 @@ class Questline(gl.Contract):
         if decided:
             p.energy = u256(int(p.energy) - 1)
             p.actions = u256(int(p.actions) + 1)
+            # Only counts toward a season the player actually holds a pass for.
+            if int(p.pass_season) == int(self.season_number):
+                p.season_actions = u256(int(p.season_actions) + 1)
+                if roll > int(p.season_best):
+                    p.season_best = u256(roll)
             if roll > int(p.best_roll):
                 p.best_roll = u256(roll)
 
@@ -960,9 +1003,13 @@ class Questline(gl.Contract):
             raise gl.vm.UserError(ERR_EXPECTED + " this season is closed, wait for the next one")
         if gl.message.value < self.pass_price:
             raise gl.vm.UserError(ERR_EXPECTED + " the season pass costs more than that")
-        if p.ranked:
+        if int(p.pass_season) == int(self.season_number):
             raise gl.vm.UserError(ERR_EXPECTED + " you already hold a pass for this season")
-        p.ranked = True
+        p.pass_season = self.season_number
+        # A new season starts from nothing. Without this the board would rank
+        # this season's players by last season's play.
+        p.season_actions = u256(0)
+        p.season_best = u256(0)
         self.season_pool = u256(int(self.season_pool) + int(gl.message.value))
         SeasonPassBought(
             gl.message.sender_address, season=self.season_number, at=self._now()
@@ -1180,9 +1227,9 @@ class Questline(gl.Contract):
         for i in range(len(self.roster)):
             addr = self.roster[i]
             p = self.players.get(addr)
-            if p is None or not p.ranked:
+            if p is None or int(p.pass_season) != int(self.season_number):
                 continue
-            rows.append((addr, int(p.actions), int(p.depth), int(p.best_roll)))
+            rows.append((addr, int(p.season_actions), int(p.depth), int(p.season_best)))
         rows.sort(key=lambda r: (-r[1], -r[2], -r[3], r[0].as_hex))
         return rows
 
@@ -1247,7 +1294,11 @@ class Questline(gl.Contract):
             "actions": int(p.actions),
             "best_roll": int(p.best_roll),
             "depth": int(p.depth),
-            "ranked": p.ranked,
+            # Derived, so the shape the site reads is unchanged. A pass is
+            # held for a season, not forever.
+            "ranked": int(p.pass_season) == int(self.season_number),
+            "season_actions": int(p.season_actions),
+            "season_best": int(p.season_best),
         }
 
     @gl.public.view

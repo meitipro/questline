@@ -33,6 +33,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     let guard = 0;
     while (lines.length < RECENT_LINES) {
       const page = await getChronicle(cursor, 50);
+
+      /* A failed read falls back to the seeded world, and `read()` never
+       * throws, so without this the sitemap would submit fourteen invented
+       * permalinks to a search engine as though they were pages. On a live
+       * world those indexes do not exist and every one of them is a 404 in
+       * Search Console. Six fixed routes and no chronicle is the honest
+       * sitemap for a chain that did not answer. */
+      if (!page.live) break;
       if (page.data.lines.length === 0) break;
       for (const line of page.data.lines) {
         lines.push({

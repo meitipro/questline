@@ -33,6 +33,17 @@ export const CHAIN = IS_STUDIO ? studionet : testnetBradbury;
 
 export const NETWORK_LABEL = IS_STUDIO ? "GENLAYER STUDIO" : "TESTNET BRADBURY";
 
+/**
+ * The one word form, for the footer's small print.
+ *
+ * Separate from NETWORK_LABEL because that one already carries the word
+ * GENLAYER, and the footer line reads "GENLAYER . <network> . GENVM PYTHON
+ * SDK". The footer had STUDIONET typed into it as a literal, which is correct
+ * today and becomes a lie the moment somebody flips the one environment
+ * variable the whole app is built around.
+ */
+export const NETWORK_SHORT = IS_STUDIO ? "STUDIONET" : "BRADBURY";
+
 export const CHAIN_ID_HEX = `0x${CHAIN.id.toString(16)}` as const;
 
 export const RPC_URL = CHAIN.rpcUrls.default.http[0];

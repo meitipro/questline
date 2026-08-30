@@ -168,7 +168,7 @@ async function main() {
   if (ok) {
     console.log("  the world is published");
     console.log("");
-    console.log("  Read it back with:  npm run check");
+    console.log("  Read it back with:  npm run verify");
   } else {
     console.log("  some calls failed. Rerunning is safe: the ones that landed are skipped.");
     process.exitCode = 1;

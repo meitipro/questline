@@ -14,7 +14,7 @@
 import Link from "next/link";
 
 import { Mark } from "./Mark";
-import { HOST } from "@/lib/chain";
+import { HOST, NETWORK_SHORT } from "@/lib/chain";
 
 const LINKS = [
   { href: "/play", label: "Play" },
@@ -137,7 +137,7 @@ export function SiteFooter() {
             textAlign: "center",
           }}
         >
-          <span>GENLAYER . STUDIONET . GENVM PYTHON SDK</span>
+          <span>GENLAYER . {NETWORK_SHORT} . GENVM PYTHON SDK</span>
           <span>QUESTLINE . BUILT ON GENLAYER BY INFERNODE</span>
         </div>
       </div>

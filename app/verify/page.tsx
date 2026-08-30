@@ -27,11 +27,21 @@ export const metadata: Metadata = {
 export default async function VerifyPage() {
   const [chronicle, world] = await Promise.all([getChronicle(0, 50), getWorld()]);
 
+  /* The banner reports on EVERY read the page made, not just one of them.
+   * Each of these pages issues two or three independent reads, and reporting
+   * on one meant a page could show seeded data from a failed read under a
+   * banner saying it was live. On /season that reached a wallet: the pass card
+   * signs `world.data.season.pass_price` as the transaction value, so a rate
+   * limited get_world beside a cached get_leaderboard would have offered the
+   * seeded price with nothing on the page saying so. */
+  const live = chronicle.live && world.live;
+  const readError = chronicle.error ?? world.error;
+
   return (
     <div className="page">
-      <SampleNote live={chronicle.live} error={chronicle.error} />
+      <SampleNote live={live} error={readError} />
 
-      <div style={{ marginTop: chronicle.live ? 0 : 24 }}>
+      <div style={{ marginTop: live ? 0 : 24 }}>
         <div className="eyebrow">{"// VERIFY"}</div>
         <h1 className="display" style={{ marginTop: 14, maxWidth: "24ch" }}>
           Do not take our word for the dice.
@@ -62,7 +72,7 @@ export default async function VerifyPage() {
       </div>
 
       <div style={{ marginTop: 26 }}>
-        <Verifier initialLines={chronicle.data.lines} live={chronicle.live} />
+        <Verifier initialLines={chronicle.data.lines} live={live} />
       </div>
 
       <div className="panel pad" style={{ marginTop: 26 }}>

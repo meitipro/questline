@@ -21,6 +21,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { LOCAL_RESULTS, REGISTRY } from "../../lib/outcomes.ts";
+import { FEATURES, FAQS } from "../../lib/landing.ts";
 import { effectiveEnergy } from "../../lib/format.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -120,6 +121,32 @@ test("every outcome carries narration", () => {
         `${band}: narration is over the contract's sixty word ceiling`,
       );
     }
+  }
+});
+
+test("every published description of the seed names the same three fields", () => {
+  // The landing told readers to hash "the action, the timestamp and the line
+  // index". The contract hashes at | player | line index - the ACTION is not
+  // in it and the PLAYER is. Anybody following the marketing copy would have
+  // computed a different number and concluded the world was lying.
+  //
+  // /verify and /world were right, which is what made it survive: the wrong
+  // sentence sat beside three correct ones.
+  const describesSeed = [
+    ...FEATURES.map((f) => f.body),
+    ...FAQS.map((q) => q.answer),
+  ].filter((text) => /seed(ed)?/i.test(text));
+
+  assert.ok(describesSeed.length > 0, "nothing describes the seed any more");
+
+  for (const text of describesSeed) {
+    assert.match(text, /player/i, `does not name the player: ${text.slice(0, 60)}`);
+    assert.match(text, /line index/i, `does not name the line index: ${text.slice(0, 60)}`);
+    assert.doesNotMatch(
+      text,
+      /the action/i,
+      `claims the action is in the seed, which it is not: ${text.slice(0, 60)}`
+    );
   }
 });
 

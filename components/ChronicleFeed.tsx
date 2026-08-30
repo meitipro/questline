@@ -114,7 +114,7 @@ export function ChronicleFeed({
 
         <aside className="rail">
           <div className="panel pad-sm">
-            <div className="label eyebrow-accent">NOTABLE ROLLS TODAY</div>
+            <div className="label eyebrow-accent">NOTABLE ROLLS</div>
             {notable.length === 0 ? (
               <p className="note" style={{ marginTop: 12 }}>
                 No natural highs or lows yet. The middle of the die is where most

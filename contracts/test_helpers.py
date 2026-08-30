@@ -404,7 +404,14 @@ check("nothing has no magnitude", caps("none", "", 3), ("none", "", 0))
 # thing it was thinking about, and a line that did nothing must not name it.
 check("nothing names nothing", caps("none", "brass key", 3), ("none", "", 0))
 
-check("discover survives on a success", caps("discover", "the second landing", 2), ("discover", "the second landing", 2))
+# A discovery is published, but only what consensus actually agreed on. The
+# place name lives in the narration; the magnitude and target do not survive,
+# because `_decision` collapses discover to ("nothing", "", 0) and never
+# compared either of them.
+check("discover survives, without un-agreed fields", caps("discover", "the second landing", 2), ("discover", "", 0))
+check("damage keeps a magnitude and cannot name anything but the player",
+      caps("damage", "the sword of a thousand truths", 3), ("damage", "self", 3))
+check("heal is the same", caps("heal", "a fountain", 2), ("heal", "self", 2))
 check("heal survives on a success", caps("heal", "self", 2), ("heal", "self", 2))
 
 # ---------- _legal_moves ----------
@@ -431,7 +438,9 @@ def _player(inventory):
         actions=4,
         best_roll=17,
         depth=2,
-        ranked=True,
+        pass_season=1,
+        season_actions=4,
+        season_best=17,
     )
 
 
@@ -776,6 +785,61 @@ if "--json" in sys.argv:
     print(json.dumps(parity_report(), sort_keys=True, indent=2))
     sys.exit(0)
 
+
+# ---------- a pass belongs to one season ----------
+#
+# The bug this pins paid season one's leader out of season two's pool. `ranked`
+# was a boolean, `buy_season_pass` set it true and nothing ever set it false,
+# and `open_season` resets nothing per player. So the previous season's holders
+# stayed on the board, carrying the previous season's action count, and took a
+# share of money that was entirely the new season's players'. They could not
+# even opt in honestly, because buy_season_pass refuses a second pass. No owner
+# method can clear a player, so this had no remedy after deployment.
+#
+# The pass is now the season number it was bought for, and holding one is an
+# arithmetic comparison rather than a flag somebody has to remember to clear.
+
+
+def _holder(pass_season, season_actions=0, season_best=0):
+    return questline.Player(
+        region=0,
+        energy=5,
+        health=20,
+        inventory=questline.DynArray([]),
+        cycle_started="2026-07-30T08:00:00",
+        joined="2026-07-30T08:00:00",
+        actions=40,
+        best_roll=20,
+        depth=2,
+        pass_season=pass_season,
+        season_actions=season_actions,
+        season_best=season_best,
+    )
+
+
+_alice = _holder(1, season_actions=40, season_best=20)
+_bob = _holder(2, season_actions=5, season_best=11)
+
+check(
+    "a season one pass is not a season two pass",
+    int(_alice.pass_season) == 2,
+    False,
+)
+check(
+    "a season two pass is a season two pass",
+    int(_bob.pass_season) == 2,
+    True,
+)
+check(
+    "buying a pass zeroes the season score, so a new season starts from nothing",
+    (int(_holder(2, season_actions=0).season_actions), int(_holder(2).season_best)),
+    (0, 0),
+)
+check(
+    "lifetime actions survive a season, because a character sheet is not a board",
+    int(_alice.actions),
+    40,
+)
 
 # ---------- report ----------
 

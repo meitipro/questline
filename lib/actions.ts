@@ -233,22 +233,35 @@ function describeVotes(receipt: any): string | undefined {
     receipt?.votes ??
     null;
   if (Array.isArray(votes) && votes.length > 0) {
-    const agreed = votes.filter((v: any) => {
-      const vote = String(v?.vote ?? v?.result ?? v).toLowerCase();
-      return vote.includes("agree") || vote === "true" || vote === "1";
-    }).length;
+    const agreed = votes.filter((v: any) => isAgreement(v?.vote ?? v?.result ?? v)).length;
     return `${agreed} of ${votes.length}`;
   }
   if (votes && typeof votes === "object") {
     const entries = Object.values(votes as Record<string, unknown>);
     if (entries.length > 0) {
-      const agreed = entries.filter((v) =>
-        String(v).toLowerCase().includes("agree")
-      ).length;
+      const agreed = entries.filter(isAgreement).length;
       return `${agreed} of ${entries.length}`;
     }
   }
   return undefined;
+}
+
+/**
+ * Whether one validator's vote was agreement.
+ *
+ * MATCHED EXACTLY, NEVER BY SUBSTRING. This read `vote.includes("agree")`, and
+ * "disagree".includes("agree") is true, so every disagreement was counted as an
+ * agreement: a two of five split rendered as "5 of 5" under the resolution
+ * feed, in the affirmative colour.
+ *
+ * Of every defect in this repository that is the one that mattered most. The
+ * page exists to say that several strangers had to agree, and it was printing a
+ * unanimity that had not happened. A product that invents its own consensus
+ * number has no argument left.
+ */
+function isAgreement(raw: unknown): boolean {
+  const vote = String(raw ?? "").trim().toLowerCase();
+  return vote === "agree" || vote === "agreed" || vote === "true" || vote === "1";
 }
 
 export async function buySeasonPass(

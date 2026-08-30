@@ -108,10 +108,15 @@ export function OrbitRings({
     const still = window.matchMedia("(prefers-reduced-motion: reduce)");
     if (still.matches || document.hidden) return;
 
-    setCount(0);
+    /* The ease starts IMMEDIATELY. It used to setCount(0) and then wait 1200ms
+     * before the first frame, which left a static, wrong "0 PLAYERS" on screen
+     * for over a second on the page whose whole argument is that its numbers
+     * come from the chain. A number climbing is read as an animation; a number
+     * sitting still on zero is read as the answer. */
     let raf = 0;
     let settle: ReturnType<typeof setTimeout> | undefined;
 
+    setCount(0);
     const begin = setTimeout(() => {
       const from = performance.now();
       const tick = (now: number) => {
@@ -126,7 +131,7 @@ export function OrbitRings({
       // first frame, the animation never starts and this lands the real number
       // anyway. Harmless when the animation did run - it is already there.
       settle = setTimeout(() => setCount(players), 2400);
-    }, 1200);
+    }, 0);
 
     return () => {
       clearTimeout(begin);
