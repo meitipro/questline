@@ -80,7 +80,19 @@ export function OrbitRings({
     .slice(0, leaders.length);
 
   const chips = byPriority.map(({ slot }, i) => ({ ...slot, row: leaders[i] }));
-  const [scale, setScale] = useState(1);
+  /**
+   * null until the viewport has been measured.
+   *
+   * It used to start at 1, which is the design's full 797px assembly, and the
+   * server has no viewport to measure - so the first paint on a 320px phone put
+   * a 797px box and its absolutely positioned rings on the page and made the
+   * whole landing draggable sideways by 438px until hydration shrank it.
+   *
+   * Nothing is lost by waiting: the assembly animates in behind a 300ms delay
+   * with `both` fill, so it is invisible for far longer than it takes an effect
+   * to run, and the box below keeps its space either way so no layout moves.
+   */
+  const [scale, setScale] = useState<number | null>(null);
   const [count, setCount] = useState(players);
 
   useEffect(() => {
@@ -140,8 +152,10 @@ export function OrbitRings({
     };
   }, [players]);
 
-  const box = Math.round(ORBIT_BOX * scale);
-  const inset = Math.round(38.5 * scale);
+  /* Laid out at full size before measuring so the hero does not reflow when the
+   * rings arrive; maxWidth below is what keeps that from overflowing a phone. */
+  const box = Math.round(ORBIT_BOX * (scale ?? 1));
+  const inset = Math.round(38.5 * (scale ?? 1));
 
   return (
     <div
@@ -151,9 +165,21 @@ export function OrbitRings({
         position: "relative",
         width: box,
         height: box,
+        /* The server cannot know the viewport, so the first paint is at scale 1
+         * - a 797px box, which on a 320px phone made the whole landing page
+         * horizontally scrollable by 438px until hydration measured and shrank
+         * it. Measured, not theorised: scrollWidth - clientWidth was 438 at
+         * first paint and 0 a second later.
+         *
+         * This caps the box at the space it has. The assembly inside is
+         * absolutely positioned and unaffected, so nothing is clipped or moved
+         * - the rings are briefly larger than their box on a narrow screen and
+         * then settle, instead of the page being draggable sideways. */
+        maxWidth: "100%",
         animation: "ql-scale-in 1.2s cubic-bezier(.22,1,.36,1) .3s both",
       }}
     >
+      {scale === null ? null : (
       <div
         style={{
           position: "absolute",
@@ -286,6 +312,7 @@ export function OrbitRings({
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }

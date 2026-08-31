@@ -484,6 +484,16 @@ h3 {
   font-size: 12px;
   letter-spacing: 0.14em;
   color: var(--muted);
+  /* Labels are short, except the one on a chronicle line, which is the line's
+   * own permalink - a single token with no space in it. At 320px that token
+   * painted 58px past the viewport and made the page scroll sideways, without
+   * any element's box crossing the edge, which is why an overflow audit that
+   * measures boxes finds nothing there.
+   *
+   * break-word rather than anywhere: it breaks a word only when the word cannot
+   * fit, and unlike `anywhere` it does not change min-content sizing, so no
+   * grid or flex item elsewhere on the site gets narrower because of this. */
+  overflow-wrap: break-word;
 }
 
 .display {

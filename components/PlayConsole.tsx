@@ -85,6 +85,15 @@ export function PlayConsole({
   const wallet = useWallet();
   const address = wallet.address;
   const [player, setPlayer] = useState<Player | null>(null);
+  /**
+   * Items this browser granted, which exist in no chronicle.
+   *
+   * Kept beside the player rather than inside it, because `player` is replaced
+   * wholesale every time the chain is re-read and a locally granted item must
+   * not survive that: once there is a real character, its inventory is whatever
+   * storage says it is.
+   */
+  const [localItems, setLocalItems] = useState<ReadonlySet<string>>(new Set());
   const [feed, setFeed] = useState<Resolved[]>(
     initialLines.map((line) => ({ line, origin: live ? "chain" : "seeded" }))
   );
@@ -133,7 +142,14 @@ export function PlayConsole({
        * no contract is configured, since the seeded fallback always has an
        * inventory. */
       const fresh = blob?.data as Player | undefined;
-      if (fresh?.exists) setPlayer(fresh);
+      if (fresh?.exists) {
+        setPlayer(fresh);
+        /* Storage is now the authority on what this character carries, so the
+         * browser's own record of what it granted is discarded. Keeping it
+         * would let a locally granted name label a chain item of the same name
+         * "granted in this browser" for the rest of the session. */
+        setLocalItems(new Set());
+      }
       if (Array.isArray(blob?.lines) && blob.lines.length > 0) {
         setFeed(blob.lines.map((line: Line) => ({ line, origin: "chain" as Origin })));
       }
@@ -152,10 +168,12 @@ export function PlayConsole({
       // Demonstration mode puts you in a seeded character so the core screen is
       // legible before a deploy. It is labelled as such, everywhere.
       setPlayer(samplePlayer(SAMPLE_YOU));
+      setLocalItems(new Set());
       return;
     }
     if (!address) {
       setPlayer(null);
+      setLocalItems(new Set());
       return;
     }
     loadPlayer(address);
@@ -288,19 +306,25 @@ export function PlayConsole({
           }
           if (line.effect === "gain_item") {
             next.inventory = [...next.inventory, line.target];
-            /* No provenance entry. The index this turn was given exists only in
-             * this browser - nothing was written to a chain - so recording it
-             * would make the rail render a link to /chronicle/<index>, which is
-             * a 404 under a caption reading "Every item links to the action
-             * that granted it". The rail already has an honest branch for an
-             * item whose granting line it does not know: it says provenance
-             * unknown, which is exactly true here.
+            /* No provenance entry. The index this turn was given exists only
+             * in this browser - nothing was written to a chain - so recording
+             * it would make the rail render a link to /chronicle/<index>,
+             * which is a 404 under a caption reading "Every item links to the
+             * action that granted it".
              *
-             * The feed row beside it is labelled "played in this browser . not
-             * written to any chain", so the turn is not being hidden. */
+             * The item is remembered as local instead, so the rail can say
+             * where it came from rather than falling back to "provenance
+             * unknown" for something the player just watched happen. */
+            setLocalItems((held) => new Set(held).add(line.target));
           }
           if (line.effect === "lose_item") {
             next.inventory = next.inventory.filter((i) => i !== line.target);
+            setLocalItems((held) => {
+              if (!held.has(line.target)) return held;
+              const without = new Set(held);
+              without.delete(line.target);
+              return without;
+            });
           }
           return next;
         });
@@ -646,6 +670,7 @@ export function PlayConsole({
               player={player}
               // Only offered when there is a chain to mint onto and a wallet to
               // sign with. There is nothing to mint in the seeded world.
+              local={localItems}
               onMint={live && address ? onMint : undefined}
               minting={minting}
               mintPrice={gen(world.season.mint_price, 2)}

@@ -191,6 +191,24 @@ test("no seeded player stands shallower than the region they start in", () => {
   }
 });
 
+test("every seeded item carries a provenance, so the strong caption is true", () => {
+  // The inventory panel prints "Every item links to the action that granted it"
+  // only when every row actually links, and falls back to a weaker sentence
+  // otherwise. In the seeded world it should never have to fall back: a
+  // demonstration that cannot show its own central claim is not demonstrating
+  // it. This is the invariant that keeps the strong caption honest.
+  for (const row of sampleLeaderboard().rows) {
+    const player = samplePlayer(row.address);
+    for (const item of player.inventory) {
+      assert.notEqual(
+        player.provenance?.[item],
+        undefined,
+        `${row.address.slice(0, 6)} carries "${item}" with no line to link to`
+      );
+    }
+  }
+});
+
 test("every seeded item a player carries is in the registry", () => {
   const registry = new Set(REGISTRY.map((i) => i.name));
   for (const row of sampleLeaderboard().rows) {

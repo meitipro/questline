@@ -19,9 +19,20 @@ export function InventoryRail({
   minting,
   mintPrice,
   mintNote,
+  local,
 }: {
   player: Player;
   title?: string;
+  /**
+   * Items granted by a turn resolved in this browser, which have no chronicle
+   * line to point at because nothing was written to a chain.
+   *
+   * Without this they fell into the "provenance unknown" branch, which is
+   * true but reads as a fault to somebody who has just watched the item being
+   * granted three inches above. The console knows exactly which items these
+   * are, so it says so.
+   */
+  local?: ReadonlySet<string>;
   /**
    * Minting turns an earned item into a tradable one. Optional because this
    * panel is also the read-only inventory on someone else's character sheet,
@@ -37,6 +48,13 @@ export function InventoryRail({
   // keeps the old behaviour rather than hiding every button.
   const mintedSet = new Set(player.minted ?? []);
   const isMinted = (item: string) => mintedSet.has(item);
+
+  /* The caption below claims every item links to the line that granted it. That
+   * is the panel's whole argument, so it must not be printed above a row that
+   * does not link - a turn resolved in this browser has no line, and a world
+   * deployed before the contract recorded provenance has none either. Checked
+   * rather than assumed, because the claim is the product. */
+  const allLinked = player.inventory.every((item) => player.provenance?.[item] !== undefined);
 
   return (
     <div className="panel pad-sm">
@@ -58,7 +76,7 @@ export function InventoryRail({
                     <>
                       <span>{item}</span>
                       <span className="mono" style={{ fontSize: 12, color: "var(--muted)" }}>
-                        provenance unknown
+                        {local?.has(item) ? "granted in this browser" : "provenance unknown"}
                       </span>
                     </>
                   ) : (
@@ -115,7 +133,9 @@ export function InventoryRail({
       )}
 
       <div style={{ marginTop: 14, fontSize: 12, lineHeight: 1.5, color: "var(--muted)" }}>
-        Every item links to the action that granted it.
+        {allLinked
+          ? "Every item links to the action that granted it."
+          : "An item links to the action that granted it wherever the chronicle holds that line."}
         {onMint ? (
           <>
             {" "}
