@@ -46,7 +46,13 @@
    * rescue one state. */
   --hover: #121316;
   --line: #1f2124;
-  --dim: #3a3d42;
+  /* Separators only - the dot between a region and its rules version, and the
+   * dash in a key/value row. It was #3a3d42, which is 1.81:1 against --ink:
+   * below anything WCAG asks for and, more to the point, too faint to separate
+   * anything. Every element using it is aria-hidden, so it is decoration and
+   * technically exempt; a separator nobody can see is still a broken
+   * separator. 3.1:1 keeps it clearly subordinate to the text either side. */
+  --dim: #625f58;
   --muted: #7a7f86;
   --body: #b7b2a8;
   --cream: #efebe2;
@@ -82,7 +88,8 @@
   --panel-dim: #efebe2;
   --hover: #e8e3d8;
   --line: #dad4c6;
-  --dim: #b0a99a;
+  /* 3.2:1 against the light --ink, matching what the dark theme gives. */
+  --dim: #8d8477;
   --muted: #6b6558;
   --body: #43403a;
   --cream: #14161a;

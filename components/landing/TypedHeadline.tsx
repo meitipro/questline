@@ -73,10 +73,22 @@ export function TypedHeadline() {
       }}
     >
       <span className="sr-only">{full}</span>
-      {/* The hero sits on a dark photograph in both themes, so these two are
-          fixed rather than tokens: --cream would turn near-black in light mode
-          and vanish into the image. */}
-      <span aria-hidden="true" style={{ color: "#0a0b0c" }}>
+      {/* The hero is dark in BOTH themes - the gradient behind it does not
+          respond to the theme - so these two are fixed rather than tokens:
+          --cream would turn near-black in light mode and vanish.
+
+          The recessive half was #0a0b0c, which is the design's "ink pressed
+          into the page" over a photograph. There is no photograph here: the
+          hero is a gradient running from #1b1d22 down to #0a0b0c, so the first
+          half of the headline was ink on ink at 1.0:1 - the sentence carrying
+          this product's entire claim was invisible, on the live site, in both
+          themes. Measured, not inferred.
+
+          #6f6b61 keeps the two-tone reading - one half recedes, one half is
+          bright - at 3.2:1 against the LIGHTEST point of the gradient, which is
+          the worst case for a mid grey. If the design's photograph is ever
+          added, this can go back to ink and be measured against the image. */}
+      <span aria-hidden="true" style={{ color: "#6f6b61" }}>
         {dark}
       </span>
       <span aria-hidden="true" style={{ color: "#efebe2" }}>
