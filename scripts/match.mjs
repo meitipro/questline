@@ -9,13 +9,18 @@
  * the bytes it is actually running and compares them to the file, so the claim
  * is checked rather than asserted.
  *
+ * The comparison is against the REPOSITORY bytes, not the working copy bytes.
+ * This file is checked out CRLF on Windows and LF elsewhere, and the deploy
+ * scripts normalise to LF for exactly that reason, so normalising here too is
+ * what makes the check give the same answer on every machine. Anything else
+ * would report a Windows checkout as a mismatch against a correct deployment.
+ *
  * A mismatch is reported by KIND, because the two kinds mean different things:
  *
- *   line endings only   The source is identical and one side was written on a
- *                       different platform. Nothing is wrong with the rules,
- *                       but the deployed bytes are not the repository bytes, so
- *                       nobody can reproduce a byte comparison. This is what
- *                       .gitattributes exists to prevent.
+ *   line endings only   The rules are identical and the deployment carries CR
+ *                       bytes the repository does not. It was made before the
+ *                       deploy scripts normalised, so nobody can reproduce a
+ *                       byte comparison against it. Redeploy.
  *
  *   different source    The deployed contract is not this file. Every sentence
  *                       on the site about readable rules is wrong until the
@@ -102,6 +107,10 @@ async function call(method, params) {
   throw last;
 }
 
+/** CR before LF removed, so two files can be compared for their content alone. */
+const flatten = (buffer) =>
+  Buffer.from(buffer.toString("utf8").split(CR + LF).join(LF), "utf8");
+
 /** Where two buffers first differ, as a line and column in the LOCAL file. */
 function firstDifference(local, chain) {
   const limit = Math.min(local.length, chain.length);
@@ -121,6 +130,15 @@ function firstDifference(local, chain) {
   return { at, line, column };
 }
 
+/** The line the difference falls on, so the report names something readable. */
+function context(buffer, at) {
+  const text = buffer.toString("utf8");
+  const from = text.lastIndexOf(LF, at) + 1;
+  const to = text.indexOf(LF, at);
+  const line = text.slice(from, to === -1 ? text.length : to).trim();
+  return line.length > 72 ? line.slice(0, 72) + " ..." : line || "(blank line)";
+}
+
 function show(byte) {
   if (byte === undefined) return "end of file";
   if (byte === 13) return "CR";
@@ -133,14 +151,18 @@ function show(byte) {
 async function main() {
   if (process.exitCode) return;
 
-  const local = readFileSync(CONTRACT);
+  /* LF, matching what the deploy scripts send. Not the working copy's bytes. */
+  const local = Buffer.from(
+    readFileSync(CONTRACT, "utf8").split(CR + LF).join(LF),
+    "utf8"
+  );
   const encoded = await call("gen_getContractCode", [address]);
   const chain = Buffer.from(encoded, "base64");
 
   console.log("");
   console.log("  contract  " + address);
   console.log("  network   " + rpc);
-  console.log("  local     " + local.length + " bytes");
+  console.log("  source    " + local.length + " bytes");
   console.log("  deployed  " + chain.length + " bytes");
   console.log("");
 
@@ -152,32 +174,35 @@ async function main() {
   /* Same source, different platform? Strip CR before LF on both sides and try
    * again. This is checked SECOND, so a real match is never reported through a
    * normalisation - only a mismatch gets explained by one. */
-  const flatten = (buffer) =>
-    Buffer.from(buffer.toString("utf8").split(CR + LF).join(LF), "utf8");
-
   if (flatten(local).equals(flatten(chain))) {
-    const localCRLF = local.includes(CR + LF);
     console.log("  Mismatch: LINE ENDINGS ONLY. The rules are identical.");
     console.log("");
-    console.log(
-      "  The file on disk uses " +
-        (localCRLF ? "CRLF" : "LF") +
-        " and the deployed bytes use " +
-        (localCRLF ? "LF" : "CRLF") +
-        "."
-    );
-    console.log("  Nobody can reproduce a byte comparison against this deployment, so");
-    console.log("  redeploy from an LF checkout - see .gitattributes for why LF.");
+    console.log("  The deployment carries CR bytes the repository does not, so it was made");
+    console.log("  from a Windows checkout before the deploy scripts normalised to LF.");
+    console.log("  Nothing is wrong with the rules, but nobody can reproduce a byte");
+    console.log("  comparison against this deployment. Redeploy - see .gitattributes.");
     process.exitCode = 1;
     return;
   }
 
-  const { at, line, column } = firstDifference(local, chain);
+  /* Located in NORMALISED space. A deployment made before the deploy scripts
+   * normalised carries a CR on line 1, and comparing raw bytes reported that CR
+   * as the difference - burying the actual change hundreds of lines below under
+   * a byte offset that matched nothing in either file. */
+  const flatLocal = flatten(local);
+  const flatChain = flatten(chain);
+  const { at, line, column } = firstDifference(flatLocal, flatChain);
+
   console.log("  Mismatch: DIFFERENT SOURCE.");
   console.log("");
-  console.log("  First difference at byte " + at + ", line " + line + " column " + column + ".");
-  console.log("    local     " + show(local[at]));
-  console.log("    deployed  " + show(chain[at]));
+  console.log("  First difference at line " + line + " column " + column + ".");
+  console.log("    source    " + show(flatLocal[at]));
+  console.log("    deployed  " + show(flatChain[at]));
+  console.log("    context   " + context(flatLocal, at));
+  if (chain.includes(CR)) {
+    console.log("");
+    console.log("  The deployment also carries CR bytes the repository does not.");
+  }
   console.log("");
   console.log("  The deployed contract is not this file. Either the address points at an");
   console.log("  older deployment, or the file has changed since it was deployed.");

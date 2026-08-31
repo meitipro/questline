@@ -49,6 +49,26 @@ function die(message) {
   throw new Abort(message);
 }
 
+/**
+ * The contract source, exactly as the repository stores it.
+ *
+ * Deploying is the moment the line endings stop being a style question. This
+ * working copy is checked out CRLF on Windows and LF everywhere else, and
+ * whichever platform ran the deploy is the only platform that can reproduce a
+ * byte comparison against it - which is the comparison `npm run match` makes and
+ * the one the whole "the rules you can read are the rules that ran" claim rests
+ * on. See .gitattributes.
+ *
+ * So the bytes are normalised to LF before they are sent, on every platform. A
+ * deploy from Windows and a deploy from Linux produce the identical contract.
+ * Python does not care either way, so nothing about the rules changes.
+ */
+function sourceForDeploy(path) {
+  const CR = String.fromCharCode(13);
+  const LF = String.fromCharCode(10);
+  return readFileSync(path, "utf8").split(CR + LF).join(LF);
+}
+
 function flag(name, fallback) {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
   return hit ? hit.slice(name.length + 3) : fallback;
@@ -144,7 +164,7 @@ async function main() {
   const passWei = toWei(passGen);
   const mintWei = toWei(mintGen);
 
-  const code = readFileSync(CONTRACT, "utf8");
+  const code = sourceForDeploy(CONTRACT);
   const account = createAccount(key);
   const client = createClient({ chain, account });
 

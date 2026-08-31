@@ -233,7 +233,11 @@ async function main() {
   step("2. deploy the contract");
   let address = flag("address", process.env.QUESTLINE_E2E_ADDRESS || "");
   if (!address) {
-    const code = readFileSync(join(ROOT, "contracts", "questline.py"), "utf8");
+    /* LF on every platform, so the deployed bytes are the repository bytes and
+     * `npm run match` can compare them from any checkout. See .gitattributes. */
+    const code = readFileSync(join(ROOT, "contracts", "questline.py"), "utf8")
+      .split(String.fromCharCode(13) + String.fromCharCode(10))
+      .join(String.fromCharCode(10));
     info(`${code.length.toLocaleString("en-US")} bytes of contract`);
     const ends = new Date(Date.now() + 28 * 86400000).toISOString().slice(0, 19);
     const hash = await retry("deploy", () =>
