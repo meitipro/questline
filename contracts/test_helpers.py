@@ -864,6 +864,80 @@ check(
     40,
 )
 
+# ---------- every write is authorised ----------
+#
+# The bug this exists for: an admin method shipped without its owner check while
+# every other admin method had one. It is invisible in review because the file
+# reads as if the gate is everywhere, and a full test suite passes on the broken
+# contract exactly as it does on the fixed one - the tests exercise what the
+# methods DO, and an ungated method does it perfectly.
+#
+# So this does not test behaviour. It reads the source and asserts that every
+# single `@gl.public.write` names its subject: either it is owner only, or it
+# acts on whoever sent the transaction. A new write method that names neither
+# fails here on the day it is written, which is the only day it is cheap.
+
+import ast as _ast
+
+_tree = _ast.parse(
+    pathlib.Path(__file__).with_name("questline.py").read_text(encoding="utf-8")
+)
+
+
+def _writes(tree):
+    """Every method carrying @gl.public.write, with its body as text."""
+    for node in _ast.walk(tree):
+        if not isinstance(node, _ast.FunctionDef):
+            continue
+        for dec in node.decorator_list:
+            if "write" in _ast.dump(dec):
+                yield node
+                break
+
+
+_UNGATED = []
+_GATED = []
+for _fn in _writes(_tree):
+    _body = _ast.dump(_fn)
+    owner = "_require_owner" in _body
+    # A method that resolves the caller's own character, or reads the sender
+    # directly, is acting on the sender by construction.
+    sender = "_require_player" in _body or "sender_address" in _body
+    (_GATED if (owner or sender) else _UNGATED).append(_fn.name)
+
+check(
+    "every write method is either owner only or acts on the sender",
+    _UNGATED,
+    [],
+)
+check(
+    "and there are writes to check, so the walk is not silently finding nothing",
+    len(_GATED) >= 9,
+    True,
+)
+
+# The gate itself, not just its presence.
+_gl = sys.modules["genlayer"].gl
+_owner = "0x1111111111111111111111111111111111111111"
+c.owner = _owner
+
+_gl.message.sender_address = _owner
+try:
+    c._require_owner()
+    _as_owner = "allowed"
+except UserError as e:
+    _as_owner = e.message
+
+_gl.message.sender_address = "0x2222222222222222222222222222222222222222"
+try:
+    c._require_owner()
+    _as_stranger = "allowed"
+except UserError as e:
+    _as_stranger = "refused"
+
+check("the owner passes the owner gate", _as_owner, "allowed")
+check("anybody else does not", _as_stranger, "refused")
+
 # ---------- report ----------
 
 print(f"{PASSED} passed, {len(FAILED)} failed")
