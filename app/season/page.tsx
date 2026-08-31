@@ -6,6 +6,7 @@ import { SampleNote } from "@/components/SampleNote";
 import { SeasonPassCard } from "@/components/SeasonPassCard";
 import { achievementDefinitions } from "@/lib/achievements";
 import { IS_STUDIO, NETWORK_LABEL } from "@/lib/chain";
+import { cardFor } from "@/lib/meta";
 import { getLeaderboard, getWorld } from "@/lib/contract";
 import { countdown, gen, playerPath, shortAddr } from "@/lib/format";
 
@@ -26,6 +27,9 @@ export const metadata: Metadata = {
   title: "Season",
   description:
     "The prize pool, the leaderboard, the achievement definitions and the clock. Placings settle on finality, not acceptance.",
+  /* The WHOLE card, not just the url - see lib/meta.ts for why setting
+   * only the url drops the picture. */
+  openGraph: cardFor("/season", "Season - Questline", "The prize pool, the leaderboard, the achievement definitions and the clock. Placings settle on finality, not acceptance."),
 };
 
 export default async function SeasonPage() {

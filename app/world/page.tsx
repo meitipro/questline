@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+import { cardFor } from "@/lib/meta";
+
 import { SampleNote } from "@/components/SampleNote";
 import { getWorld } from "@/lib/contract";
 import { gen } from "@/lib/format";
@@ -21,6 +23,9 @@ export const metadata: Metadata = {
   title: "World and rules",
   description:
     "Every region, its rules and version, the item registry, and the exact criteria validators apply when they resolve an action.",
+  /* The WHOLE card, not just the url - see lib/meta.ts for why setting
+   * only the url drops the picture. */
+  openGraph: cardFor("/world", "World and rules - Questline", "Every region, its rules and version, the item registry, and the exact criteria validators apply when they resolve an action."),
 };
 
 export default async function WorldPage() {

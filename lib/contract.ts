@@ -82,10 +82,36 @@ function client() {
  * twenty-one seconds, so the visitor gets a gateway timeout instead of the
  * page that was one fallback away from rendering perfectly.
  *
- * Five seconds is well past a healthy Studio read (they land in hundreds of
- * milliseconds) and well inside any platform's limit.
+ * SIX SECONDS PER ATTEMPT, THREE ATTEMPTS. Both numbers are measured, and the
+ * earlier five-second single shot was based on a wrong premise - the comment
+ * said a healthy Studio read lands in hundreds of milliseconds. It does not.
+ * Timed against a live contract, four calls each:
+ *
+ *   get_leaderboard   1.6  1.6  1.6  1.6
+ *   get_line          2.5  1.6  1.6  3.7
+ *   get_world         err  err  2.5  1.8
+ *   get_chronicle     err  err  err  1.8
+ *
+ * So a successful read is 1.6 to 3.7 seconds and five seconds was not headroom,
+ * it was the edge of the distribution: get_chronicle timed out at 5,000ms on a
+ * contract that answers correctly, and the page showed the seeded world.
+ *
+ * The failures are the second half of the story. They are not slow reads - they
+ * are transient connection errors that surface after ten to nineteen seconds,
+ * and the NEXT attempt usually succeeds. Studio resolves to a pool of edge
+ * addresses and node pins one per process, so one unlucky pick reads as the
+ * whole chain being down. scripts/e2e.mjs and scripts/match.mjs already retry
+ * for exactly this reason; the site did not, and fell back to the seeded world
+ * on the first stumble.
+ *
+ * Six seconds is comfortably past the slowest observed success and cuts a
+ * stalled connection short instead of waiting nineteen seconds to be told. The
+ * worst case is three attempts plus two pauses, about 18.5 seconds, inside the
+ * 30 second maxDuration the pages declare.
  */
-const READ_DEADLINE_MS = 5_000;
+const READ_DEADLINE_MS = 6_000;
+const READ_ATTEMPTS = 3;
+const RETRY_PAUSE_MS = 250;
 
 /**
  * The read, or a rejection at the deadline, whichever comes first.
@@ -113,14 +139,31 @@ async function callView(functionName: string, args: unknown[]): Promise<string> 
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < TTL_MS) return hit.value as string;
 
-  const raw = await withDeadline(
-    client().readContract({
-      address: QUESTLINE,
-      functionName,
-      args: args as any,
-    }),
-    functionName
-  );
+  let raw: unknown;
+  let last: unknown;
+  let attempt = 0;
+  for (;;) {
+    attempt += 1;
+    try {
+      raw = await withDeadline(
+        client().readContract({
+          address: QUESTLINE,
+          functionName,
+          args: args as any,
+        }),
+        functionName
+      );
+      break;
+    } catch (e) {
+      last = e;
+      if (attempt >= READ_ATTEMPTS) throw last;
+      /* client() builds a new client per call, so the next attempt opens its
+       * own connection rather than reusing the one that just failed. The pause
+       * is there so a node that is briefly busy is not asked three times in the
+       * same instant. */
+      await new Promise((r) => setTimeout(r, RETRY_PAUSE_MS));
+    }
+  }
 
   // Most views answer with a json string, but verify_roll answers with a u256,
   // which genlayer-js decodes to a bigint. JSON.stringify throws outright on a

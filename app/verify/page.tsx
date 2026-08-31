@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+
+import { cardFor } from "@/lib/meta";
 import Link from "next/link";
 
 import { SampleNote } from "@/components/SampleNote";
@@ -22,6 +24,9 @@ export const metadata: Metadata = {
   title: "Verify a roll",
   description:
     "Recompute any roll in the chronicle from its three public fields, in your own browser, with no help from this site.",
+  /* The WHOLE card, not just the url - see lib/meta.ts for why setting
+   * only the url drops the picture. */
+  openGraph: cardFor("/verify", "Verify a roll - Questline", "Recompute any roll in the chronicle from its three public fields, in your own browser, with no help from this site."),
 };
 
 export default async function VerifyPage() {

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+import { cardFor } from "@/lib/meta";
+
 import { ChronicleFeed } from "@/components/ChronicleFeed";
 import { SampleNote } from "@/components/SampleNote";
 import { getChronicle } from "@/lib/contract";
@@ -21,6 +23,9 @@ export const metadata: Metadata = {
   title: "Chronicle",
   description:
     "Every action anyone has resolved: narration, effect, roll, player and rules version, with a permalink per line and a roll anyone can recompute.",
+  /* The WHOLE card, not just the url - see lib/meta.ts for why setting
+   * only the url drops the picture. */
+  openGraph: cardFor("/chronicle", "Chronicle - Questline", "Every action anyone has resolved: narration, effect, roll, player and rules version, with a permalink per line and a roll anyone can recompute."),
 };
 
 export default async function ChroniclePage() {

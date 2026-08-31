@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+import { cardFor } from "@/lib/meta";
+
 import { PlayConsole } from "@/components/PlayConsole";
 import { SampleNote } from "@/components/SampleNote";
 import { getPlayerLines, getWorld } from "@/lib/contract";
@@ -22,6 +24,9 @@ export const metadata: Metadata = {
   title: "Play",
   description:
     "Type one action. Validators resolve it against public rules and your real inventory, and the result becomes a public chronicle line.",
+  /* The WHOLE card, not just the url - see lib/meta.ts for why setting
+   * only the url drops the picture. */
+  openGraph: cardFor("/play", "Play - Questline", "Type one action. Validators resolve it against public rules and your real inventory, and the result becomes a public chronicle line."),
 };
 
 /**
