@@ -63,6 +63,23 @@ const TTL_MS = 20_000;
 type Entry = { at: number; value: unknown };
 const cache = new Map<string, Entry>();
 
+/**
+ * How long a FAILED read is remembered, and why there is a second cache at all.
+ *
+ * A chronicle line page reads the line twice: once in generateMetadata for the
+ * share card and once in the page body. On success the second read is free -
+ * the cache above already holds it. On failure nothing was cached, so both
+ * reads ran a full three-attempt cycle: about 18.5 seconds each, 37 in total,
+ * past the 30 second maxDuration the page declares. The visitor would get a
+ * gateway timeout, which is the exact failure the deadline exists to prevent.
+ *
+ * So a failure is remembered too, briefly. Long enough that the second read in
+ * one page render returns instantly, short enough that a visitor arriving
+ * moments after an outage ends still gets a real answer.
+ */
+const FAIL_TTL_MS = 5_000;
+const failures = new Map<string, { at: number; error: unknown }>();
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 function client() {
@@ -139,6 +156,9 @@ async function callView(functionName: string, args: unknown[]): Promise<string> 
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < TTL_MS) return hit.value as string;
 
+  const failed = failures.get(key);
+  if (failed && Date.now() - failed.at < FAIL_TTL_MS) throw failed.error;
+
   let raw: unknown;
   let last: unknown;
   let attempt = 0;
@@ -156,7 +176,10 @@ async function callView(functionName: string, args: unknown[]): Promise<string> 
       break;
     } catch (e) {
       last = e;
-      if (attempt >= READ_ATTEMPTS) throw last;
+      if (attempt >= READ_ATTEMPTS) {
+        failures.set(key, { at: Date.now(), error: last });
+        throw last;
+      }
       /* client() builds a new client per call, so the next attempt opens its
        * own connection rather than reusing the one that just failed. The pause
        * is there so a node that is briefly busy is not asked three times in the
@@ -177,6 +200,7 @@ async function callView(functionName: string, args: unknown[]): Promise<string> 
         : JSON.stringify(raw);
 
   cache.set(key, { at: Date.now(), value: text });
+  failures.delete(key);
   return text;
 }
 

@@ -133,9 +133,15 @@ export function InventoryRail({
       )}
 
       <div style={{ marginTop: 14, fontSize: 12, lineHeight: 1.5, color: "var(--muted)" }}>
-        {allLinked
-          ? "Every item links to the action that granted it."
-          : "An item links to the action that granted it wherever the chronicle holds that line."}
+        {/* Only when there is something to say it about. On an empty inventory
+            the panel already says everything has to be earned by a chronicle
+            line, and following that with a caption about how items link reads
+            as a legend for a column that is not there. */}
+        {player.inventory.length === 0
+          ? null
+          : allLinked
+            ? "Every item links to the action that granted it."
+            : "An item links to the action that granted it wherever the chronicle holds that line."}
         {onMint ? (
           <>
             {" "}
