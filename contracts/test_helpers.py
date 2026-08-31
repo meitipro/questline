@@ -786,6 +786,29 @@ if "--json" in sys.argv:
     sys.exit(0)
 
 
+# ---------- a region name must be reachable ----------
+#
+# A name was stored up to MAX_NAME while the model's target is clipped to
+# MAX_TARGET, so a region named between the two could be created, listed as an
+# exit, and never moved to. The clipped target could not equal the full name,
+# so the move degraded to nothing with the energy already spent.
+
+check(
+    "the two limits are the same, so a name can always be a target",
+    questline.MAX_TARGET <= questline.MAX_NAME,
+    True,
+)
+check(
+    "a target is clipped to MAX_TARGET",
+    len(questline._normalise_item("x" * (questline.MAX_TARGET + 40))),
+    questline.MAX_TARGET,
+)
+check(
+    "a name of exactly MAX_TARGET survives normalisation unchanged",
+    questline._normalise_item("a" * questline.MAX_TARGET),
+    "a" * questline.MAX_TARGET,
+)
+
 # ---------- a pass belongs to one season ----------
 #
 # The bug this pins paid season one's leader out of season two's pool. `ranked`

@@ -178,11 +178,18 @@ action.
 npm install
 npm run dev          # http://localhost:3400
 npm test             # house style, parity tests, contract tests
+npm run match        # are the deployed bytes this file?
 ```
 
 The whole suite runs on a fresh clone with **no `npm install`**: the house style
 check, `node --test` over `tests/parity`, and `contracts/test_helpers.py` use
 only builtins and Node's own type stripping.
+
+`npm run match` is the one that checks the claim rather than restating it. It
+asks the chain for the source it is running, compares it byte for byte against
+`contracts/questline.py`, and separates a line-ending difference from a genuinely
+different contract - the first means nobody can reproduce the comparison, the
+second means the rules on screen are not the rules that ran.
 
 Deploying, seeding and verifying a live world are in
 [docs/DEPLOY.md](docs/DEPLOY.md).

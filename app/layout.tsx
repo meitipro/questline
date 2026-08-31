@@ -20,6 +20,12 @@ export const metadata: Metadata = {
     title: "Questline - the game master is a contract",
     description:
       "The rules, the rolls and your inventory live on chain. Nobody here can cheat. Not even us.",
+    /* The ROOT url, and every route that does not set its own inherits it.
+     * That is correct for the site card and wrong for a deep link: a shared
+     * /season previewed as the landing page. Routes with their own
+     * generateMetadata (a chronicle line, a character sheet) already override
+     * it; the static routes are covered by the sitemap, which names the real
+     * urls. Worth setting per route if the social cards ever matter more. */
     url: ORIGIN,
     siteName: "Questline",
     type: "website",

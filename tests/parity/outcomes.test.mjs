@@ -21,6 +21,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { LOCAL_RESULTS, REGISTRY } from "../../lib/outcomes.ts";
+import { sampleChronicle, samplePlayer, sampleLeaderboard, sampleWorld } from "../../lib/sample.ts";
 import { FEATURES, FAQS } from "../../lib/landing.ts";
 import { effectiveEnergy } from "../../lib/format.ts";
 
@@ -147,6 +148,55 @@ test("every published description of the seed names the same three fields", () =
       /the action/i,
       `claims the action is in the seed, which it is not: ${text.slice(0, 60)}`
     );
+  }
+});
+
+test("every seeded provenance points at a line that exists", () => {
+  // A character sheet renders each carried item as a link to the line that
+  // granted it, under the caption "Every item links to the action that granted
+  // it". The seeded world is generated, so a provenance index that no seeded
+  // line carries would put a 404 under that exact sentence, two clicks from
+  // the landing page, in front of the audience most likely to be checking the
+  // claim. Nothing in the generator enforces this on its own.
+  const indexes = new Set(sampleChronicle().lines.map((l) => l.index));
+  const board = sampleLeaderboard().rows;
+
+  assert.ok(board.length > 0, "the seeded board is empty");
+
+  for (const row of board) {
+    const player = samplePlayer(row.address);
+    for (const [item, at] of Object.entries(player.provenance ?? {})) {
+      assert.ok(
+        indexes.has(at),
+        `${row.address.slice(0, 6)} carries "${item}" stamped ${at}, which is not a seeded line`
+      );
+    }
+  }
+});
+
+test("no seeded player stands shallower than the region they start in", () => {
+  // enter() floors every player at regions[0].depth, so a seeded depth below
+  // that is a number the contract could not have produced - the site would be
+  // publishing a state its own rules forbid. The generator picks depth and the
+  // starting region independently, so only this test connects them.
+  const world = sampleWorld();
+  const floor = world.regions[0]?.depth ?? 0;
+
+  for (const row of sampleLeaderboard().rows) {
+    const player = samplePlayer(row.address);
+    assert.ok(
+      player.depth >= floor,
+      `${row.address.slice(0, 6)} is at depth ${player.depth}, below the starting floor of ${floor}`
+    );
+  }
+});
+
+test("every seeded item a player carries is in the registry", () => {
+  const registry = new Set(REGISTRY.map((i) => i.name));
+  for (const row of sampleLeaderboard().rows) {
+    for (const item of samplePlayer(row.address).inventory) {
+      assert.ok(registry.has(item), `"${item}" is carried but is not in the registry`);
+    }
   }
 });
 

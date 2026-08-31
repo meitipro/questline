@@ -288,7 +288,16 @@ export function PlayConsole({
           }
           if (line.effect === "gain_item") {
             next.inventory = [...next.inventory, line.target];
-            next.provenance = { ...next.provenance, [line.target]: index };
+            /* No provenance entry. The index this turn was given exists only in
+             * this browser - nothing was written to a chain - so recording it
+             * would make the rail render a link to /chronicle/<index>, which is
+             * a 404 under a caption reading "Every item links to the action
+             * that granted it". The rail already has an honest branch for an
+             * item whose granting line it does not know: it says provenance
+             * unknown, which is exactly true here.
+             *
+             * The feed row beside it is labelled "played in this browser . not
+             * written to any chain", so the turn is not being hidden. */
           }
           if (line.effect === "lose_item") {
             next.inventory = next.inventory.filter((i) => i !== line.target);

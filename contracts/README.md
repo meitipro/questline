@@ -139,7 +139,7 @@ count, which is a useful thing to diff after an edit.
 | `act(action)` | a player | The turn. The only method that asks a model. |
 | `buy_season_pass()` | anyone, payable | Pays into the season pool. |
 | `mint_item(name)` | a player, payable | Mints an item the player was granted. |
-| `close_season()` | owner | Settles the pool and starts the next season. |
+| `close_season()` | owner | Settles the pool and closes the season. `open_season` starts the next one. |
 | `add_region(...)` | owner | Appends a region. Never removes one. |
 | `revise_region(...)` | owner | Rewrites a region's rules, bumping its version. |
 | `register_items(csv)` | owner | Adds to the item registry. |

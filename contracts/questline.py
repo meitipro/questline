@@ -452,7 +452,8 @@ class Questline(gl.Contract):
     #: anyone can read the world back.
     lines_by_player: TreeMap[Address, DynArray[u256]]
 
-    #: Which season is running. Incremented by `close_season`, never reset.
+    #: Which season is running. Incremented by `open_season`, never reset.
+    #: `close_season` only settles the pool and sets `season_closed`.
     season_number: u256
 
     #: What it is called, and when it ends. `season_ends` is an iso timestamp in
@@ -1142,8 +1143,25 @@ class Questline(gl.Contract):
         if int(max_magnitude) == 0 or int(max_magnitude) > 10:
             raise gl.vm.UserError(ERR_EXPECTED + " a region cap must be between 1 and 10")
 
+        # A REGION NAME MUST FIT THROUGH THE SAME DOOR THE MODEL'S ANSWER DOES.
+        #
+        # A name is stored whole, but the model's target is clipped to
+        # MAX_TARGET before anything is matched against it. So a region named
+        # between MAX_TARGET and MAX_NAME characters could be created, could be
+        # listed as an exit, and could never be moved to: the clipped target
+        # would never equal the full name, `_region_index_by_name` would answer
+        # -1, and the turn would resolve as nothing with the energy already
+        # spent and no explanation anywhere.
+        #
+        # Refused rather than silently clipped, because the owner picked the
+        # name and truncating it would leave two spellings of the same place.
+        if len(clean) > MAX_TARGET:
+            raise gl.vm.UserError(
+                ERR_EXPECTED + " a region name cannot be longer than a move target"
+            )
+
         region = self.regions.append_new_get()
-        region.name = clean[:MAX_NAME]
+        region.name = clean
         region.description = description.strip()[:MAX_DESCRIPTION]
         region.rules = rules.strip()[:MAX_RULES]
         region.rules_version = u256(1)
@@ -1151,8 +1169,10 @@ class Questline(gl.Contract):
         region.depth = depth
         for part in exits.split(","):
             label = " ".join(part.strip().lower().split())
-            if label != "" and len(region.exits) < MAX_EXITS:
-                region.exits.append(label[:MAX_NAME])
+            # Same ceiling, same reason: an exit label is matched against a
+            # region name, and a clipped target has to be able to equal it.
+            if label != "" and len(label) <= MAX_TARGET and len(region.exits) < MAX_EXITS:
+                region.exits.append(label)
         return u256(len(self.regions) - 1)
 
     @gl.public.write
