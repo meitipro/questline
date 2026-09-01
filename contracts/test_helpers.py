@@ -406,8 +406,7 @@ check("nothing names nothing", caps("none", "brass key", 3), ("none", "", 0))
 
 # A discovery is published, but only what consensus actually agreed on. The
 # place name lives in the narration; the magnitude and target do not survive,
-# because `_decision` collapses discover to ("nothing", "", 0) and never
-# compared either of them.
+# because `_decision` returns ("discover", "", 0) and never compared either.
 check("discover survives, without un-agreed fields", caps("discover", "the second landing", 2), ("discover", "", 0))
 check("damage keeps a magnitude and cannot name anything but the player",
       caps("damage", "the sword of a thousand truths", 3), ("damage", "self", 3))
@@ -508,11 +507,18 @@ def D(effect, target="", magnitude=0):
     return {"effect": effect, "target": target, "magnitude": magnitude}
 
 
-check("no effect is nothing", questline._decision(D("none"), 4), ("nothing", "", 0))
-# discover writes a chronicle line and moves no state, so disagreeing with
-# "none" over it would be failing consensus about prose.
-check("discover is also nothing", questline._decision(D("discover", "a door", 3), 4), ("nothing", "", 0))
-check("an unknown effect is nothing", questline._decision(D("ascend", "the sky", 9), 4), ("nothing", "", 0))
+check("no effect compares as none", questline._decision(D("none"), 4), ("none", "", 0))
+# discover moves no state either, but it is STORED as its own word, so it is
+# compared as its own word. Collapsing the two let a leader publish "discover"
+# on a line a validator had resolved as "none".
+check(
+    "discover compares as discover, not as none",
+    questline._decision(D("discover", "a door", 3), 4),
+    ("discover", "", 0),
+)
+# An unrecognised effect compares as `none` because `none` is what _apply_caps
+# stores for it - the compared value is the value that gets written.
+check("an unknown effect compares as none", questline._decision(D("ascend", "the sky", 9), 4), ("none", "", 0))
 check("damage carries no target", questline._decision(D("damage", "self", 3), 4), ("damage", "", 3))
 check("heal carries no target", questline._decision(D("heal", "self", 2), 4), ("heal", "", 2))
 check(
@@ -549,8 +555,13 @@ check(
 
 # What may differ.
 check(
-    "none and discover agree, because neither moves state",
+    "none and discover do NOT agree, because they are stored as different words",
     questline._decisions_agree(D("none"), D("discover", "a landing", 4), 4),
+    False,
+)
+check(
+    "an unrecognised effect agrees with none, which is what it is stored as",
+    questline._decisions_agree(D("ascend", "the sky", 9), D("none"), 4),
     True,
 )
 # The tolerance is gone. `run_nondet` stores the LEADER's answer, so forgiving
@@ -962,6 +973,61 @@ except UserError as e:
 
 check("the owner passes the owner gate", _as_owner, "allowed")
 check("anybody else does not", _as_stranger, "refused")
+
+# ---------- the property that ties the two halves together ----------
+#
+# THE invariant of this contract, stated once and checked exhaustively:
+#
+#     if two independent resolutions compare as equal,
+#     they must produce the same stored outcome.
+#
+# `run_nondet` gives the contract the LEADER's answer and a validator only says
+# yes or no to it. So any pair that agrees but would store different things is a
+# way for the chain to publish something a validator never resolved - and every
+# consensus bug found in this contract has been exactly that shape:
+#
+#   - magnitude forgiven within one, and the leader's number stored
+#   - `discover` and `none` compared as the same thing, and stored as different
+#     words
+#   - `discover` compared without its target and magnitude, and stored with them
+#
+# Each was found by reading. This finds the whole family by construction, over
+# every combination of effect, target and magnitude a model could return, in
+# each dice band. A new field on a chronicle line that consensus does not
+# compare fails here on the day it is added.
+
+_PROBE_EFFECTS = list(questline.EFFECTS) + ["ascend", ""]
+_PROBE_TARGETS = ["", "brass key", "rusted bar", "the long stair", "self", "a dry room"]
+_PROBE_MAGS = [0, 1, 2, 3, 5, 9]
+
+_probe_blobs = [
+    D(_e, _t, _m)
+    for _e in _PROBE_EFFECTS
+    for _t in _PROBE_TARGETS
+    for _m in _PROBE_MAGS
+]
+
+_violations = []
+_agreeing_pairs = 0
+for _band, _cap in (("fail", 4), ("partial", 2), ("success", 4)):
+    for _i, _a in enumerate(_probe_blobs):
+        for _b in _probe_blobs[_i:]:
+            if not questline._decisions_agree(_a, _b, _cap):
+                continue
+            _agreeing_pairs += 1
+            _sa = caps(_a["effect"], _a["target"], _a["magnitude"], band=_band, band_cap=_cap)
+            _sb = caps(_b["effect"], _b["target"], _b["magnitude"], band=_band, band_cap=_cap)
+            if _sa != _sb and len(_violations) < 6:
+                _violations.append(
+                    "%s band: %r agrees with %r but stores %r vs %r"
+                    % (_band, _a, _b, _sa, _sb)
+                )
+
+check("agreement implies an identical stored outcome", _violations, [])
+# And the sweep must actually be finding agreements, or an empty violation list
+# would prove nothing at all - the same trap the criteria-quoting guard fell
+# into when it compared only the first seventy characters.
+check("the sweep found agreeing pairs to check", _agreeing_pairs > 5000, True)
 
 # ---------- report ----------
 

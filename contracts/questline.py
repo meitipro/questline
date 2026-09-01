@@ -216,10 +216,17 @@ def _decision(blob: dict, band_cap: int) -> tuple:
     This is what two independent resolutions are compared on, and every
     collapse in it is deliberate:
 
- - `none` and `discover` both become "nothing", because in this contract
-      neither one moves any state. A validator that disagreed over which
-      flavour of "nothing happened" applied would be failing consensus over
-      prose.
+ - `none` and `discover` are NOT collapsed together, though neither moves
+      state. They used to be, and the argument was that a validator
+      disagreeing over which flavour of "nothing happened" applied would be
+      failing consensus over prose. But the two are stored differently - the
+      line reads `effect: discover` or `effect: none` - so collapsing them let
+      a leader publish "discover" on a line a validator had resolved as
+      "none". A word on a permanent record is not prose; it is the record.
+ - an effect the contract does not recognise becomes `none`, which is what
+      `_apply_caps` stores for it, so a leader returning nonsense and a
+      validator returning `none` agree on the value that actually gets
+      written.
  - `damage` and `heal` carry no target, because the target of either is
       always the player.
  - magnitude is clamped to the band ceiling first, since anything above it
@@ -245,8 +252,10 @@ def _decision(blob: dict, band_cap: int) -> tuple:
     if mag > band_cap:
         mag = band_cap
 
-    if effect not in EFFECTS or effect in ("none", "discover"):
-        return ("nothing", "", 0)
+    if effect not in EFFECTS or effect == "none":
+        return ("none", "", 0)
+    if effect == "discover":
+        return ("discover", "", 0)
     if effect in ("damage", "heal"):
         return (effect, "", mag)
     # gain_item, lose_item, move. The target is the outcome; the number is not.
