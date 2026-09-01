@@ -363,7 +363,7 @@ check("a failure can still hurt", caps("damage", "self", 3, band="fail"), ("dama
 check(
     "a failure can still take an item you carry",
     caps("lose_item", "rusted bar", 1, band="fail"),
-    ("lose_item", "rusted bar", 1),
+    ("lose_item", "rusted bar", 0),
 )
 
 # The magnitude ceiling.
@@ -378,7 +378,7 @@ check("a magnitude under the cap is left alone", caps("damage", "self", 1), ("da
 # The registry is the final word.
 check("an invented item is nothing", caps("gain_item", "flaming sword", 3), ("none", "", 0))
 check("an empty item is nothing", caps("gain_item", "", 3), ("none", "", 0))
-check("a registry item is granted", caps("gain_item", "brass key", 3), ("gain_item", "brass key", 3))
+check("a registry item is granted", caps("gain_item", "brass key", 3), ("gain_item", "brass key", 0))
 check("an item you already carry is nothing", caps("gain_item", "rusted bar", 3), ("none", "", 0))
 check(
     "a full inventory refuses a grant",
@@ -389,12 +389,12 @@ check("you cannot lose what you never had", caps("lose_item", "brass key", 1), (
 check(
     "you can lose what you carry",
     caps("lose_item", "lantern, wet", 1),
-    ("lose_item", "lantern, wet", 1),
+    ("lose_item", "lantern, wet", 0),
 )
 
 # Movement is restricted to published exits, not to plausible sounding places.
 check("you cannot move somewhere with no exit", caps("move", "the throne room", 4), ("none", "", 0))
-check("you can take a published exit", caps("move", "the long stair", 4), ("move", "the long stair", 4))
+check("you can take a published exit", caps("move", "the long stair", 4), ("move", "the long stair", 0))
 check("an exitless region traps you", caps("move", "the long stair", 4, exits=[]), ("none", "", 0))
 
 # A no effect result never carries a magnitude, because a chronicle line reading
@@ -516,9 +516,9 @@ check("an unknown effect is nothing", questline._decision(D("ascend", "the sky",
 check("damage carries no target", questline._decision(D("damage", "self", 3), 4), ("damage", "", 3))
 check("heal carries no target", questline._decision(D("heal", "self", 2), 4), ("heal", "", 2))
 check(
-    "a grant carries its item",
+    "a grant carries its item, and no magnitude",
     questline._decision(D("gain_item", "brass key", 3), 4),
-    ("gain_item", "brass key", 3),
+    ("gain_item", "brass key", 0),
 )
 check("magnitude is clamped before comparison", questline._decision(D("damage", "self", 9), 4)[2], 4)
 check("a negative magnitude is zero", questline._decision(D("damage", "self", -3), 4)[2], 0)
@@ -553,14 +553,40 @@ check(
     questline._decisions_agree(D("none"), D("discover", "a landing", 4), 4),
     True,
 )
+# The tolerance is gone. `run_nondet` stores the LEADER's answer, so forgiving
+# a difference of one stored damage a validator had resolved as something else -
+# and a player on 4 health died on a line another node read as 3.
 check(
-    "magnitude may differ by one",
+    "magnitude may NOT differ by one, because the leader's number is the one stored",
     questline._decisions_agree(D("damage", "self", 3), D("damage", "self", 2), 4),
+    False,
+)
+check(
+    "magnitude may not differ by two either",
+    questline._decisions_agree(D("damage", "self", 4), D("damage", "self", 2), 4),
+    False,
+)
+check(
+    "an exact magnitude agrees",
+    questline._decisions_agree(D("damage", "self", 3), D("damage", "self", 3), 4),
+    True,
+)
+# The other half of the change: for the effects where magnitude moves nothing,
+# the nodes no longer have to agree on it at all - so exactness costs less
+# consensus than it looks like it should.
+check(
+    "two grants of the same item agree however they number it",
+    questline._decisions_agree(D("gain_item", "brass key", 1), D("gain_item", "brass key", 4), 4),
     True,
 )
 check(
-    "magnitude may not differ by two",
-    questline._decisions_agree(D("damage", "self", 4), D("damage", "self", 2), 4),
+    "so do two moves to the same place",
+    questline._decisions_agree(D("move", "the long stair", 0), D("move", "the long stair", 3), 4),
+    True,
+)
+check(
+    "but not two grants of different items",
+    questline._decisions_agree(D("gain_item", "brass key", 2), D("gain_item", "torn page", 2), 4),
     False,
 )
 check(
@@ -750,7 +776,6 @@ def parity_report() -> dict:
             "max_inventory": questline.MAX_INVENTORY,
             "effects": list(questline.EFFECTS),
             "fail_effects": list(questline.FAIL_EFFECTS),
-            "magnitude_tolerance": questline.MAGNITUDE_TOLERANCE,
         },
         # sha256 over ascii, so the two runtimes are compared on the hash
         # itself before anything is built on top of it.

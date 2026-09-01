@@ -78,10 +78,64 @@ test("every item an outcome names is in the registry", () => {
   }
 });
 
-test("nothing moves state without naming what it moved", () => {
+test("an effect that moves no number carries no number", () => {
+  // The contract compares magnitude only for damage and heal - the two effects
+  // where it moves anything - and stores 0 for gain_item, lose_item and move.
+  // A demo outcome or a seeded line carrying "magnitude 3" beside a grant is
+  // publishing a state the contract cannot produce, on the pages that exist to
+  // argue the published state is the real one.
+  const NO_MAGNITUDE = ["gain_item", "lose_item", "move", "none", "discover"];
+  // And the two the contract strips a target from as well. `_apply_caps`
+  // returns ("discover", "", 0) exactly: the place name belongs in the
+  // narration, which is where a discovery is described anyway.
+  const NO_TARGET = ["none", "discover"];
+
   for (const band of BANDS) {
     for (const outcome of LOCAL_RESULTS[band]) {
-      if (outcome.effect !== "none") {
+      if (NO_MAGNITUDE.includes(outcome.effect)) {
+        assert.equal(
+          outcome.magnitude,
+          0,
+          `${band}: "${outcome.effect}" carries magnitude ${outcome.magnitude}`
+        );
+      }
+      if (NO_TARGET.includes(outcome.effect)) {
+        assert.equal(
+          outcome.target,
+          "",
+          `${band}: "${outcome.effect}" names "${outcome.target}"`
+        );
+      }
+    }
+  }
+
+  for (const line of sampleChronicle().lines) {
+    if (NO_MAGNITUDE.includes(line.effect)) {
+      assert.equal(
+        line.magnitude,
+        0,
+        `seeded line ${line.index}: "${line.effect}" carries magnitude ${line.magnitude}`
+      );
+    }
+    if (NO_TARGET.includes(line.effect)) {
+      assert.equal(
+        line.target,
+        "",
+        `seeded line ${line.index}: "${line.effect}" names "${line.target}"`
+      );
+    }
+  }
+});
+
+test("nothing moves state without naming what it moved", () => {
+  // `discover` joined `none` here when the contract stopped storing a target
+  // for it: a discovery moves nothing, so there is nothing for the target to
+  // name, and the place appears in the narration instead. Every effect that
+  // DOES move something must still say what.
+  const NAMES_NOTHING = ["none", "discover"];
+  for (const band of BANDS) {
+    for (const outcome of LOCAL_RESULTS[band]) {
+      if (!NAMES_NOTHING.includes(outcome.effect)) {
         assert.notEqual(outcome.target, "", `${band}: "${outcome.effect}" has no target`);
       }
     }

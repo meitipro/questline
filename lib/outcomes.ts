@@ -42,16 +42,16 @@ export const LOCAL_RESULTS: Record<
   fail: [
     { text: "you push, and the archive pushes back. water closes over the shelf you were holding.", effect: "damage", target: "self", magnitude: 3 },
     { text: "nothing gives. you lose your footing and the cold takes what was left of your grip.", effect: "damage", target: "self", magnitude: 2 },
-    { text: "the movement is wrong from the start. whatever you were holding is in the water now.", effect: "lose_item", target: "torn page", magnitude: 1 },
+    { text: "the movement is wrong from the start. whatever you were holding is in the water now.", effect: "lose_item", target: "torn page", magnitude: 0 },
   ],
   partial: [
     { text: "it half works. something shifts, something else settles back into place, and you are no further in.", effect: "none", target: "", magnitude: 0 },
-    { text: "the movement is right and the timing is not. you gain a torn page and lose the light for a moment.", effect: "gain_item", target: "torn page", magnitude: 2 },
-    { text: "you get most of the way. it is far enough to see the second landing, and not far enough to reach it.", effect: "discover", target: "the second landing", magnitude: 2 },
+    { text: "the movement is right and the timing is not. you gain a torn page and lose the light for a moment.", effect: "gain_item", target: "torn page", magnitude: 0 },
+    { text: "you get most of the way. it is far enough to see the second landing, and not far enough to reach it.", effect: "discover", target: "", magnitude: 0 },
   ],
   success: [
-    { text: "it works, quietly. the archive does not comment. you take the brass key and it is warmer than the water.", effect: "gain_item", target: "brass key", magnitude: 3 },
-    { text: "the way opens by an inch and then by a foot. you step through onto the long stair.", effect: "move", target: "the long stair", magnitude: 4 },
-    { text: "the seal gives. behind it is a room the map does not have, and it is dry.", effect: "discover", target: "a dry room", magnitude: 4 },
+    { text: "it works, quietly. the archive does not comment. you take the brass key and it is warmer than the water.", effect: "gain_item", target: "brass key", magnitude: 0 },
+    { text: "the way opens by an inch and then by a foot. you step through onto the long stair.", effect: "move", target: "the long stair", magnitude: 0 },
+    { text: "the seal gives. behind it is a room the map does not have, and it is dry.", effect: "discover", target: "", magnitude: 0 },
   ],
 };

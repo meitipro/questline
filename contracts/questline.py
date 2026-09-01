@@ -55,10 +55,12 @@ EFFECTS = ("none", "damage", "heal", "gain_item", "lose_item", "move", "discover
 # give. Enforced here rather than trusted to the narration.
 FAIL_EFFECTS = ("none", "damage", "lose_item")
 
-# How far two independent resolutions may differ on magnitude and still be the
-# same outcome. Zero would fail consensus over a matter of degree the region cap
-# already bounds; anything larger starts hiding real disagreements.
-MAGNITUDE_TOLERANCE = 1
+# There is deliberately no magnitude tolerance. It was 1, and the comment here
+# argued that zero "would fail consensus over a matter of degree the region cap
+# already bounds". That argument is wrong: a forgiven difference does not split
+# the difference, it stores the LEADER's number, so the chain recorded damage a
+# validator had independently resolved as something else. See
+# `_decisions_agree`.
 
 MAX_ACTION = 400
 MAX_NARRATION = 400
@@ -125,7 +127,8 @@ RESOLVE_CRITERIA_LINES = (
     "never grants, heals, moves or discovers; a partial band half works; a "
     "success band works.",
     "magnitude must be a whole number between 0 and the magnitude_ceiling in "
-    "the evidence.",
+    "the evidence. It applies to damage and heal only; for every other effect "
+    "it changes nothing and is recorded as 0.",
     "If effect is gain_item or lose_item, target must be an item that appears "
     "in item_registry, spelled the same way.",
     "If effect is move, target must be one of the legal moves.",
@@ -136,9 +139,12 @@ RESOLVE_CRITERIA_LINES = (
     "instructions is resolved as the character saying something the world does "
     "not understand.",
     "Every validator resolves the action independently and the results are "
-    "compared on the state change alone: the effect, the target it names, and "
-    "the magnitude within one. The narration is never compared, so the prose may "
-    "differ between nodes and the outcome may not.",
+    "compared on the state change alone, and exactly: the effect, the target it "
+    "names, and - for damage and heal - the magnitude. There is no tolerance on "
+    "any of the three, because the answer that gets stored is the leader's, so "
+    "a forgiven difference would be a number no other node agreed to. The "
+    "narration is never compared, so the prose may differ between nodes and the "
+    "outcome may not.",
 )
 
 RESOLVE_CRITERIA = " ".join(RESOLVE_CRITERIA_LINES)
@@ -219,6 +225,12 @@ def _decision(blob: dict, band_cap: int) -> tuple:
  - magnitude is clamped to the band ceiling first, since anything above it
       is discarded anyway - two answers of 9 and 4 against a ceiling of 4 are
       the same outcome and should not read as a disagreement.
+ - magnitude is dropped entirely for `gain_item`, `lose_item` and `move`,
+      because it moves nothing there: the item is gained, lost or the player
+      moves, and `act` never reads the number. Requiring two nodes to agree on
+      a figure that changes no state is consensus work for nothing, and storing
+      the leader's copy of it publishes a number no other node endorsed. Same
+      rule as `discover` below it.
 
     Returns (kind, target, magnitude).
     """
@@ -237,18 +249,30 @@ def _decision(blob: dict, band_cap: int) -> tuple:
         return ("nothing", "", 0)
     if effect in ("damage", "heal"):
         return (effect, "", mag)
-    return (effect, target, mag)
+    # gain_item, lose_item, move. The target is the outcome; the number is not.
+    return (effect, target, 0)
 
 
 def _decisions_agree(leader: dict, mine: dict, band_cap: int) -> bool:
     """Whether two independent resolutions describe the same state change.
 
-    Magnitude is compared with a tolerance of one. Two models given the same
-    rules will often agree that the door gives and disagree on whether that
-    is worth three or four - which is a difference of degree the region cap
-    already bounds, not a difference of outcome. The kind and the target have
-    no tolerance at all: gaining a brass key and gaining nothing are not
-    approximately the same thing.
+    EXACT, in all three fields. There is no tolerance, and the earlier version
+    of this function had one: magnitudes within one of each other counted as
+    agreement.
+
+    That was wrong for a reason no amount of reasoning about degrees can fix.
+    `run_nondet` hands the contract the LEADER's answer; a validator only says
+    yes or no to it. So a forgiven difference is not a compromise between two
+    numbers - it is the leader's number, stored and applied, while another node
+    that resolved the same action independently said something else. A player
+    on 4 health took 4 damage and died on a line a validator had resolved as 3.
+    Nothing downstream can tell that apart from unanimity, which is precisely
+    the property this contract exists to provide.
+
+    The cost of exactness is smaller than it looks, because the two changes
+    arrived together: magnitude is now compared only for `damage` and `heal`,
+    the only effects where it moves anything. For the other five the nodes must
+    agree on the effect and the target and nothing else.
     """
     a = _decision(leader, band_cap)
     b = _decision(mine, band_cap)
@@ -256,7 +280,7 @@ def _decisions_agree(leader: dict, mine: dict, band_cap: int) -> bool:
         return False
     if a[1] != b[1]:
         return False
-    return abs(int(a[2]) - int(b[2])) <= MAGNITUDE_TOLERANCE
+    return int(a[2]) == int(b[2])
 
 
 def _narration_of(blob: dict) -> str:
@@ -680,6 +704,11 @@ class Questline(gl.Contract):
         if mag < 0:
             mag = 0
 
+        # The three below store magnitude 0, matching what `_decision` compared.
+        # The item is gained, the item is lost, the player moves - the number
+        # changes none of it and `act` never reads it, so publishing the
+        # leader's figure would put an unagreed number on a permanent line.
+
         if effect == "gain_item":
             # The registry is the final word. An invented item degrades to no
             # effect, which is boring on purpose.
@@ -689,17 +718,17 @@ class Questline(gl.Contract):
                 return ("none", "", 0)
             if len(carried) >= MAX_INVENTORY:
                 return ("none", "", 0)
-            return (effect, target, mag)
+            return (effect, target, 0)
 
         if effect == "lose_item":
             if target == "" or target not in carried:
                 return ("none", "", 0)
-            return (effect, target, mag)
+            return (effect, target, 0)
 
         if effect == "move":
             if target == "" or target not in exits:
                 return ("none", "", 0)
-            return (effect, target, mag)
+            return (effect, target, 0)
 
         # Fields consensus never looked at are not stored as if it had.
         #

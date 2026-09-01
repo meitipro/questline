@@ -163,6 +163,21 @@ export default async function LinePage({
           {line.text}
         </p>
 
+        {/* Which half of this page the network actually agreed on.
+         *
+         * Everything else here is either deterministic - the roll, the caps, the
+         * inventory snapshot - or was compared exactly between independent
+         * validators. The prose was not: it is the resolving node's, and another
+         * validator resolving the same action wrote its own and was never asked
+         * to match. Saying so is the difference between publishing a fact and
+         * publishing a story that looks like one, on the page most likely to be
+         * read by somebody who arrived from a shared link. */}
+        <p className="note" style={{ marginTop: 12, maxWidth: "60ch" }}>
+          The prose above is the resolving node&apos;s own and was never compared.
+          What the validators each resolved independently and had to match
+          exactly is below: the effect, what it named, and the magnitude.
+        </p>
+
         <div
           className="mono"
           style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 22, flexWrap: "wrap" }}
