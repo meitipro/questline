@@ -179,6 +179,7 @@ npm install
 npm run dev          # http://localhost:3400
 npm test             # house style, parity tests, contract tests
 npm run match        # are the deployed bytes this file?
+npm run match -- --lint    # ...and does the linter pass on what the chain returned?
 ```
 
 The whole suite runs on a fresh clone with **no `npm install`**: the house style
@@ -190,6 +191,11 @@ asks the chain for the source it is running, compares it byte for byte against
 `contracts/questline.py`, and separates a line-ending difference from a genuinely
 different contract - the first means nobody can reproduce the comparison, the
 second means the rules on screen are not the rules that ran.
+
+`--lint` then runs `genvm-lint` over the bytes the chain returned rather than
+over the file on disk. Those are different questions: linting the repository
+proves the repository. A deployment is only proven by linting what the chain
+actually holds.
 
 Deploying, seeding and verifying a live world are in
 [docs/DEPLOY.md](docs/DEPLOY.md).

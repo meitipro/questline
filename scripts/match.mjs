@@ -25,9 +25,18 @@
  *   different source    The deployed contract is not this file. Every sentence
  *                       on the site about readable rules is wrong until the
  *                       address or the file changes.
+ *
+ * With --lint it also runs genvm-lint over the DEPLOYED bytes rather than over
+ * the file on disk. That is a separate question from whether they match, and it
+ * is the one a portal review actually asks: a submission has been rejected
+ * elsewhere for deployed source failing the linter while the repository version
+ * passed cleanly. Linting the repo proves the repo. Only linting what the chain
+ * returned proves the deployment.
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -139,6 +148,42 @@ function context(buffer, at) {
   return line.length > 72 ? line.slice(0, 72) + " ..." : line || "(blank line)";
 }
 
+/**
+ * genvm-lint over the bytes the chain returned.
+ *
+ * Written to a real file because the linter takes a path, and named
+ * questline.py because the deeper pass loads the module - a different filename
+ * changes the module name it reports and, on this linter, whether it finds the
+ * contract class at all.
+ *
+ * The two Windows details from scripts/lint-contract.mjs apply here too: the
+ * child needs PYTHONIOENCODING=utf-8 or it dies on the tick it prints for
+ * success, and it must never be spawned through a shell or the space in
+ * "GenLayer Works" splits the path.
+ */
+function lintDeployed(bytes) {
+  const dir = mkdtempSync(join(tmpdir(), "questline-deployed-"));
+  const file = join(dir, "questline.py");
+  try {
+    writeFileSync(file, bytes);
+    console.log("  Linting the deployed bytes, not the file on disk:");
+    console.log("");
+    const run = spawnSync("genvm-lint", ["check", file], {
+      stdio: "inherit",
+      env: { ...process.env, PYTHONIOENCODING: "utf-8" },
+      shell: false,
+    });
+    if (run.error) {
+      console.error("  Could not run genvm-lint: " + run.error.message);
+      console.error("  Install it with:  pip install genvm-linter");
+      return 2;
+    }
+    return run.status ?? 1;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 function show(byte) {
   if (byte === undefined) return "end of file";
   if (byte === 13) return "CR";
@@ -168,7 +213,21 @@ async function main() {
 
   if (local.equals(chain)) {
     console.log("  Match. The deployed bytes are this file.");
+    if (process.argv.includes("--lint")) {
+      console.log("");
+      const status = lintDeployed(chain);
+      if (status !== 0) process.exitCode = status;
+    }
     return;
+  }
+
+  /* Lint the deployed bytes even when they differ, and especially then: a
+   * mismatch means the chain is running something this repository does not
+   * describe, so what that something does is the more urgent question. */
+  if (process.argv.includes("--lint")) {
+    const status = lintDeployed(chain);
+    if (status !== 0) process.exitCode = status;
+    console.log("");
   }
 
   /* Same source, different platform? Strip CR before LF on both sides and try
