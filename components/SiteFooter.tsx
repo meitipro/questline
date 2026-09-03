@@ -14,7 +14,7 @@
 import Link from "next/link";
 
 import { Mark } from "./Mark";
-import { HOST, NETWORK_SHORT } from "@/lib/chain";
+import { HAS_EXPLORER, HOST, IS_LIVE, NETWORK_SHORT, QUESTLINE, explorerAddress } from "@/lib/chain";
 
 const LINKS = [
   { href: "/play", label: "Play" },
@@ -138,6 +138,37 @@ export function SiteFooter() {
           }}
         >
           <span>GENLAYER . {NETWORK_SHORT} . GENVM PYTHON SDK</span>
+
+          {/* The address, on every page.
+            *
+            * A product whose whole argument is "the rules are on chain, go and
+            * read them" had nowhere on the site that said WHICH contract. The
+            * chronicle proves a roll and /world publishes the criteria, and a
+            * reader who wanted to check either against storage themselves had
+            * to be told the address by someone.
+            *
+            * Only when there is one: in the seeded demonstration there is no
+            * contract to name, and printing a placeholder there would be the
+            * exact kind of small dishonesty the rest of this site avoids. */}
+          {IS_LIVE ? (
+            <span>
+              CONTRACT{" "}
+              {HAS_EXPLORER ? (
+                <a
+                  href={explorerAddress(QUESTLINE)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="footer-link"
+                  style={{ textDecoration: "underline", textUnderlineOffset: 3 }}
+                >
+                  {QUESTLINE}
+                </a>
+              ) : (
+                QUESTLINE
+              )}
+            </span>
+          ) : null}
+
           <span>QUESTLINE . BUILT ON GENLAYER BY INFERNODE</span>
         </div>
       </div>

@@ -52,14 +52,23 @@ export const RPC_URL = CHAIN.rpcUrls.default.http[0];
  * Explorer base url, or "" when the active network has no working one.
  *
  * genlayer-js points studionet at https://genlayer-explorer.vercel.app, which
- * answered 503 on every request when it was last checked. Emitting "view
- * transaction" links into a dead host is worse than emitting none, so Studio
- * defaults to no explorer and the interface drops the link rather than
- * shipping a dead one.
+ * answers 503 on every request. Emitting "view transaction" links into a dead
+ * host is worse than emitting none, so this is NOT taken from the SDK - it is
+ * the one value here that is hardcoded rather than derived.
+ *
+ * The working Studio explorer is explorer-studio.genlayer.com. Verified today:
+ * /address/<contract> returns 200 and renders the contract with its creator,
+ * its deploy transaction and its transaction list. Studio used to default to
+ * no explorer at all here because that host had been down when this was
+ * written; a chain whose transactions cannot be pointed at is a hard thing to
+ * ask anyone to trust, so it is on now, and NEXT_PUBLIC_GENLAYER_EXPLORER
+ * still overrides it if that ever changes again.
  */
+const STUDIO_EXPLORER = "https://explorer-studio.genlayer.com";
+
 const EXPLORER_BASE = (
   process.env.NEXT_PUBLIC_GENLAYER_EXPLORER ??
-  (IS_STUDIO ? "" : CHAIN.blockExplorers?.default?.url || "")
+  (IS_STUDIO ? STUDIO_EXPLORER : CHAIN.blockExplorers?.default?.url || "")
 ).replace(/\/+$/, "");
 
 export const HAS_EXPLORER = EXPLORER_BASE.length > 0;
