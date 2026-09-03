@@ -220,30 +220,73 @@ export async function act(
 }
 
 /**
- * "5 of 5", when the receipt carries the votes.
+ * "3 of 3", counting only validators that actually cast a vote.
  *
- * Returns undefined rather than a guess when it does not. The agreement count is
- * exactly the sort of number this product must never invent, so a line whose
- * votes are unknown shows no votes row at all.
+ * AN IDLE VALIDATOR IS NOT A DISSENTER, and this used to present one as though
+ * it were. Read off a real Studio receipt for an action that resolved
+ * successfully:
+ *
+ *   consensus_data.validators  [agree, agree, agree, idle]
+ *   consensus_data.votes       {a: idle, b: idle, c: agree, d: agree, e: agree}
+ *
+ * The old version divided by the whole array and printed "3 of 4" - which tells
+ * the reader that one of four strangers looked at this action and disagreed.
+ * None did. One did not answer.
+ *
+ * That is the same defect as counting "disagree" as agreement because it
+ * contains the substring, just pointed the other way: one invented a unanimity,
+ * this invented a dissent. On the page whose entire argument is that several
+ * strangers had to agree, both are fatal.
+ *
+ * Note the two sources disagree on the count as well - four entries in
+ * `validators`, five in `votes` - so the denominator can never be "however many
+ * the receipt happens to list". It is the number of votes actually cast.
+ *
+ * Returns undefined rather than a guess when nothing recognisable is there. A
+ * vote vocabulary that changes under us must produce no row at all, never "0 of
+ * 5" on an action that reached consensus.
  */
-function describeVotes(receipt: any): string | undefined {
-  const votes =
+export function describeVotes(receipt: any): string | undefined {
+  const source =
     receipt?.consensus_data?.validators ??
     receipt?.data?.consensus_data?.validators ??
+    receipt?.consensus_data?.votes ??
     receipt?.votes ??
     null;
-  if (Array.isArray(votes) && votes.length > 0) {
-    const agreed = votes.filter((v: any) => isAgreement(v?.vote ?? v?.result ?? v)).length;
-    return `${agreed} of ${votes.length}`;
-  }
-  if (votes && typeof votes === "object") {
-    const entries = Object.values(votes as Record<string, unknown>);
-    if (entries.length > 0) {
-      const agreed = entries.filter(isAgreement).length;
-      return `${agreed} of ${entries.length}`;
+  if (!source || typeof source !== "object") return undefined;
+
+  const raw: unknown[] = Array.isArray(source)
+    ? source.map((v: any) => v?.vote ?? v?.result ?? v)
+    : Object.values(source as Record<string, unknown>);
+
+  let agreed = 0;
+  let cast = 0;
+  for (const vote of raw) {
+    if (isAgreement(vote)) {
+      agreed += 1;
+      cast += 1;
+    } else if (isDissent(vote)) {
+      cast += 1;
     }
+    // Anything else - idle, timeout, a word this build has never seen - is not
+    // a vote and is not counted on either side of the fraction.
   }
-  return undefined;
+
+  // Nothing recognisable means the shape moved. Say nothing.
+  if (cast === 0) return undefined;
+  return `${agreed} of ${cast}`;
+}
+
+/**
+ * Whether one validator's vote was an actual disagreement.
+ *
+ * Listed explicitly, exactly like agreement, so that a value this build does
+ * not know is treated as "did not vote" rather than silently becoming a
+ * dissent. `idle` is the one seen in practice on Studio.
+ */
+function isDissent(raw: unknown): boolean {
+  const vote = String(raw ?? "").trim().toLowerCase();
+  return vote === "disagree" || vote === "disagreed" || vote === "false" || vote === "0";
 }
 
 /**
