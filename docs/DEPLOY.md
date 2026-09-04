@@ -149,6 +149,42 @@ curl https://<your-app>.vercel.app/api/line/0
 
 ---
 
+## 6. Before submitting it anywhere
+
+The deployment is the submission. A reviewer fetches the **deployed** source,
+diffs it against this repository, and runs the linter on what the chain
+returned - so a correct repository proves nothing on its own.
+
+```bash
+npm run match -- --address=0x<the deployed address> --lint
+```
+
+Three things have to be true, and this prints all three:
+
+- **Match.** The deployed bytes are `contracts/questline.py`, byte for byte.
+  A `LINE ENDINGS ONLY` mismatch means the rules are identical but the
+  deployment carries CR bytes no checkout has, so nobody can reproduce the
+  comparison - redeploy. `DIFFERENT SOURCE` means the chain is running
+  something this repository does not describe.
+- **Lint passed / Validation passed**, on the bytes the chain returned rather
+  than on the file on disk. A submission has been rejected elsewhere for
+  deployed source failing the linter while its repository version was clean.
+- **17 methods (8 view, 9 write)**, which is what a complete deploy looks like.
+
+The contract page on the explorer is the evidence to cite:
+
+```
+https://explorer-studio.genlayer.com/address/0x<the deployed address>
+```
+
+It shows the creator, the deploy transaction and every call made against it.
+
+Finally, play one real action against the deployed world and confirm it
+resolves - `npm run demo` does this - because deploying and seeding prove the
+world exists, not that validators can agree inside it.
+
+---
+
 ## A custom domain
 
 **Settings → Domains → Add** `www.questline.world`, then at your registrar:
