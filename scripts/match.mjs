@@ -116,9 +116,24 @@ async function call(method, params) {
   throw last;
 }
 
-/** CR before LF removed, so two files can be compared for their content alone. */
+/**
+ * The two differences that are not bytes of what runs: line endings, and
+ * whitespace at the very end of the file.
+ *
+ * Both are what a web editor does to a file on the way through. Pasting a
+ * contract into one rewrites CRLF and commonly eats the trailing newline, and
+ * neither changes a single instruction Python will execute. Reporting them as a
+ * mismatch trains people to ignore this check, which is exactly when it stops
+ * catching the difference that matters.
+ *
+ * Trailing whitespace only. Whitespace anywhere else is indentation, and in
+ * Python indentation is syntax.
+ */
 const flatten = (buffer) =>
-  Buffer.from(buffer.toString("utf8").split(CR + LF).join(LF), "utf8");
+  Buffer.from(
+    buffer.toString("utf8").split(CR + LF).join(LF).replace(/[ \t\n]+$/, ""),
+    "utf8"
+  );
 
 /** Where two buffers first differ, as a line and column in the LOCAL file. */
 function firstDifference(local, chain) {
@@ -234,12 +249,28 @@ async function main() {
    * again. This is checked SECOND, so a real match is never reported through a
    * normalisation - only a mismatch gets explained by one. */
   if (flatten(local).equals(flatten(chain))) {
-    console.log("  Mismatch: LINE ENDINGS ONLY. The rules are identical.");
+    /* Name WHICH cosmetic difference it is. "Something about whitespace" sends
+     * the reader back to a 64KB diff; "the trailing newline" does not. */
+    const endings =
+      chain.includes(CR) !== local.includes(CR)
+        ? "line endings"
+        : null;
+    const trailing =
+      flatten(local).length !== local.length || flatten(chain).length !== chain.length
+        ? "whitespace at the end of the file"
+        : null;
+    const which = [endings, trailing].filter(Boolean).join(" and ") || "whitespace";
+
+    console.log(`  Mismatch: COSMETIC ONLY (${which}). The rules are identical.`);
     console.log("");
-    console.log("  The deployment carries CR bytes the repository does not, so it was made");
-    console.log("  from a Windows checkout before the deploy scripts normalised to LF.");
-    console.log("  Nothing is wrong with the rules, but nobody can reproduce a byte");
-    console.log("  comparison against this deployment. Redeploy - see .gitattributes.");
+    console.log("  Not one byte of what Python executes differs. This is what a web editor");
+    console.log("  does to a file on the way through - it rewrites line endings and often");
+    console.log("  eats the trailing newline.");
+    console.log("");
+    console.log("  So the contract is fine, and the byte comparison is not reproducible:");
+    console.log("  anyone checking this deployment against the repository sees a diff. If");
+    console.log("  that matters for a submission, redeploy from an LF checkout - see");
+    console.log("  .gitattributes for why the repository stores LF everywhere.");
     process.exitCode = 1;
     return;
   }

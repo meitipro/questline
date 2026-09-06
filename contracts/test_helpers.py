@@ -1029,9 +1029,115 @@ check("agreement implies an identical stored outcome", _violations, [])
 # into when it compared only the first seventy characters.
 check("the sweep found agreeing pairs to check", _agreeing_pairs > 5000, True)
 
+# ---------- every value in the prompt is fenced or contract owned ----------
+#
+# Tagging untrusted text is not a fence. The party who writes the text can write
+# the closing tag, so <player_action>...</player_action> is decoration unless
+# something strips the angle brackets first. `_clean_action` does - it REPLACES
+# them with a space rather than deleting them, so length is preserved and
+# fencing before the length cap cannot push a payload back over it.
+#
+# But that only holds for the ONE value somebody remembered to fence. This walks
+# the prompt expression in `act` and requires every interpolated name to be
+# accounted for: fenced, or a value only the contract can write. A parameter
+# added to the prompt later fails here until somebody decides which it is, which
+# is the point - the failure arrives in the diff that introduces it.
+
+_prompt_expr = None
+for _node in _ast.walk(_tree):
+    if isinstance(_node, _ast.FunctionDef) and _node.name == "act":
+        for _stmt in _ast.walk(_node):
+            if (
+                isinstance(_stmt, _ast.Assign)
+                and len(_stmt.targets) == 1
+                and isinstance(_stmt.targets[0], _ast.Name)
+                and _stmt.targets[0].id == "prompt"
+            ):
+                _prompt_expr = _stmt.value
+
+check("the prompt expression was found to check", _prompt_expr is not None, True)
+
+# Everything the prompt is allowed to interpolate, and why. A name not on this
+# list is a finding, not a formatting detail.
+_FENCED = {
+    # The only caller-controlled string in the whole prompt. _clean_action
+    # strips angle brackets before it gets here.
+    "text": "player input, fenced by _clean_action",
+}
+_CONTRACT_OWNED = {
+    "RESOLVE_TASK": "module constant",
+    "RESOLVE_CRITERIA": "module constant",
+    "DIE": "module constant",
+    "region": "storage, written only by add_region/revise_region, owner only",
+    "inventory_now": "joined from p.inventory, whose names come from the registry",
+    "allowed": "_legal_moves, built from region exits",
+    "registry": "joined from self.item_order, owner only",
+    "roll": "computed in the deterministic half from the consensus datetime",
+    "band": "derived from roll by _band",
+    "band_cap": "derived from the band and the region cap",
+}
+
+# The name of a function being CALLED is not a value being interpolated -
+# `str(int(x))` puts x into the prompt, not `str` and not `int`. Collect the
+# callees first so they can be skipped, rather than allowlisting builtins by
+# name and quietly excusing a future helper that does something else.
+_callees = set()
+_names_in_prompt = set()
+if _prompt_expr is not None:
+    for _n in _ast.walk(_prompt_expr):
+        if isinstance(_n, _ast.Call) and isinstance(_n.func, _ast.Name):
+            _callees.add(_n.func.id)
+    for _n in _ast.walk(_prompt_expr):
+        if isinstance(_n, _ast.Name):
+            _names_in_prompt.add(_n.id)
+        elif isinstance(_n, _ast.Attribute) and isinstance(_n.value, _ast.Name):
+            _names_in_prompt.add(_n.value.id)
+
+_unaccounted = sorted(
+    n
+    for n in _names_in_prompt
+    if n not in _FENCED and n not in _CONTRACT_OWNED and n not in _callees
+)
+check("every value interpolated into the prompt is fenced or contract owned", _unaccounted, [])
+check("and the player's own text is among them, so the walk sees it", "text" in _names_in_prompt, True)
+
+# The fence itself: replace, never delete, and applied before the length cap.
+_clean_src = ""
+for _node in _ast.walk(_tree):
+    if isinstance(_node, _ast.FunctionDef) and _node.name == "_clean_action":
+        _clean_src = _ast.dump(_node)
+check("the fence replaces angle brackets rather than deleting them", "' '" in _clean_src or '" "' in _clean_src, True)
+check("the fence handles the opening bracket", "'<'" in _clean_src or '"<"' in _clean_src, True)
+check("the fence handles the closing bracket", "'>'" in _clean_src or '">"' in _clean_src, True)
+
+# And the property that makes replace-not-delete matter: fencing must not be
+# able to lengthen the string past the cap. Checked on the real function.
+_worst = "<" * 500 + ">" * 500
+check(
+    "fencing never lengthens the input",
+    len(c._clean_action(_worst)) <= len(_worst),
+    True,
+)
+check(
+    "a fenced action still respects the length cap",
+    len(c._clean_action("x" * 5000)) <= questline.MAX_ACTION,
+    True,
+)
+check(
+    "no angle bracket survives the fence",
+    ("<" in c._clean_action(_worst)) or (">" in c._clean_action(_worst)),
+    False,
+)
+
 # ---------- report ----------
 
 print(f"{PASSED} passed, {len(FAILED)} failed")
 for f in FAILED:
     print("  FAIL  " + f)
-sys.exit(1 if FAILED else 0)
+
+# Only when run directly. This file matches pytest's `test_*.py` discovery
+# pattern, and a bare sys.exit() at import time takes the whole pytest process
+# down with an INTERNALERROR rather than reporting anything. conftest.py keeps
+# pytest away from it; this makes an accidental import survivable anyway.
+if __name__ == "__main__":
+    sys.exit(1 if FAILED else 0)
