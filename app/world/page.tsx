@@ -44,6 +44,32 @@ export default async function WorldPage() {
       </div>
 
       {/* ---- regions ---- */}
+      {/* An empty list used to render as no section at all: the heading, the
+          grid and everything in it simply vanished, while the item registry
+          beside it said in red that it was empty. A reader could not tell
+          whether the page had failed, was still loading, or the world genuinely
+          had nothing in it - and the three call for very different reactions.
+          Absence gets said out loud here for the same reason it does
+          everywhere else in this product. */}
+      {regions.length === 0 ? (
+        <div
+          style={{
+            marginTop: 36,
+            background: "var(--panel)",
+            border: "1px solid var(--line)",
+            padding: 26,
+          }}
+        >
+          <div className="label">REGIONS</div>
+          <p className="note" style={{ marginTop: 12, color: "var(--fail-text)" }}>
+            No region has been published, so there is nowhere to act and nothing
+            to judge an action against. A region carries the rules, the magnitude
+            ceiling and the exits; without one the contract has no world in it
+            yet, only a season.
+          </p>
+        </div>
+      ) : null}
+
       <div
         className="grid-1px regions"
         style={{ gridTemplateColumns: "repeat(2, 1fr)", marginTop: 36 }}
