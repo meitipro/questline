@@ -42,3 +42,6 @@ scripts/.*.mjs
 # repos this one follows publish their deploy runbook. Launch material is not
 # engineering documentation, so it stays local.
 docs/VIDEO_PROMPT.md
+
+# Scratch output from a deploy or a demo run. Never part of the repository.
+artifacts/
