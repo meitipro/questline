@@ -86,7 +86,7 @@ export function WalletButton() {
       <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
         <button
           type="button"
-          className="theme-toggle"
+          className="wallet-pill"
           onClick={connect}
           disabled={connecting}
         >
@@ -102,18 +102,21 @@ export function WalletButton() {
       {onCorrectChain === false ? (
         <button
           type="button"
-          className="theme-toggle"
+          className="wallet-pill"
           onClick={switchChain}
           disabled={switching}
           style={{ color: "var(--fail-text)", borderColor: "var(--fail-text)" }}
-          title={`Switch your wallet to ${NETWORK_LABEL}`}
+          title={`Your wallet is on another network. Switch it to ${NETWORK_LABEL}.`}
         >
-          {switching ? "SWITCHING" : "WRONG NETWORK . SWITCH"}
+          {/* Short, because this sits in a header beside a nav and a CTA. What
+              it means is in the title and, at length, on the pages that are
+              about to ask for a signature. */}
+          {switching ? "SWITCHING" : "SWITCH NETWORK"}
         </button>
       ) : null}
       <Link
         href={playerPath(address)}
-        className="theme-toggle"
+        className="wallet-pill"
         style={{ color: "var(--cream)" }}
         title={address}
       >

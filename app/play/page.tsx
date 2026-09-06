@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { cardFor } from "@/lib/meta";
 
@@ -54,11 +55,30 @@ export default async function PlayPage() {
         <h1 className="display" style={{ marginTop: 14, maxWidth: "24ch" }}>
           The world has no regions yet.
         </h1>
+        {/* This page is served to EVERYONE, so it cannot answer with a shell
+            command. It used to say "run npm run seed", which means nothing to a
+            visitor with no checkout of this repository, and is wrong for an
+            owner who deployed through the Studio interface rather than the
+            script. Say what is true of the world instead. */}
         <p className="lede" style={{ marginTop: 16, maxWidth: "60ch" }}>
           A region carries the rules an action is judged against, so there is
-          nothing to resolve until one exists. Run{" "}
-          <span className="mono">npm run seed</span> to publish the opening season.
+          nothing to resolve until one exists. The contract is deployed and
+          answering - it simply holds no regions yet, and only the account that
+          deployed it can publish them.
         </p>
+        <p className="note" style={{ marginTop: 14, maxWidth: "62ch" }}>
+          If that account is yours: call <span className="mono">register_items</span>{" "}
+          once, then <span className="mono">add_region</span> for each region, in
+          that order - a grant is refused against an empty registry.
+        </p>
+        <div style={{ display: "flex", gap: 12, marginTop: 26, flexWrap: "wrap" }}>
+          <Link href="/world" className="btn">
+            What a region carries
+          </Link>
+          <Link href="/verify" className="btn-ghost">
+            Verify a roll
+          </Link>
+        </div>
       </div>
     );
   }
