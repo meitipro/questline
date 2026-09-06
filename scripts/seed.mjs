@@ -144,11 +144,42 @@ async function main() {
   console.log("");
   console.log(`  network     ${chain.name} (chain ${chain.id})`);
   console.log(`  contract    ${address}`);
-  console.log(`  owner       ${account.address}`);
+  console.log(`  signing as  ${account.address}`);
+
+  /* Ask the contract who owns it BEFORE sending anything.
+   *
+   * Only the owner may publish a world, and the old version simply printed the
+   * account and warned that a wrong one would be refused - so a mismatched key
+   * produced five confusing failures in a row, each blaming the method rather
+   * than the signer. One read answers it up front, and names both addresses so
+   * the difference is visible rather than inferred. */
+  let owner = "";
+  try {
+    const raw = await client.readContract({
+      address,
+      functionName: "get_world",
+      args: [],
+    });
+    owner = JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw)).owner ?? "";
+  } catch (e) {
+    die(
+      `Could not read the contract at ${address}.\n` +
+        `  ${String(e?.shortMessage ?? e?.message ?? e).split("\n")[0]}\n` +
+        "  Check the address, and that it is spelled exactly as deployed."
+    );
+  }
+
+  console.log(`  owner       ${owner || "(unknown)"}`);
   console.log("");
-  console.log("  Only the contract owner can publish a world. If this account is");
-  console.log("  not the deployer, every call below will be refused.");
-  console.log("");
+
+  if (owner && owner.toLowerCase() !== account.address.toLowerCase()) {
+    die(
+      "That key is not the contract's owner, so every call below would be refused.\n\n" +
+        `  the contract is owned by  ${owner}\n` +
+        `  this key signs as         ${account.address}\n\n` +
+        "  Use the key of the account that deployed it."
+    );
+  }
 
   let ok = await send(client, "item registry", "register_items", [REGISTRY]);
 
