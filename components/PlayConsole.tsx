@@ -10,7 +10,7 @@ import {
   mintItem,
   readableError,
 } from "@/lib/actions";
-import { IS_LIVE } from "@/lib/chain";
+import { IS_LIVE, NETWORK_LABEL } from "@/lib/chain";
 import {
   ago,
   bandCap,
@@ -628,6 +628,26 @@ export function PlayConsole({
                 leader proposed . validators reading the evidence
               </div>
             </div>
+          ) : null}
+
+          {/* The console never checked the network at all, which was the worst
+              place in the site to leave it out: this is where every action is
+              signed. A wallet on Ethereum mainnet would take the signature and
+              fail for a reason the wallet's own error does not explain, after
+              the reader had already typed their turn. Checked before they act,
+              and with a way out rather than a diagnosis. */}
+          {IS_LIVE && wallet.address && wallet.onCorrectChain === false ? (
+            <button
+              type="button"
+              className="btn-ghost"
+              style={{ marginTop: 16, width: "100%", color: "var(--fail-text)" }}
+              onClick={wallet.switchChain}
+              disabled={wallet.switching}
+            >
+              {wallet.switching
+                ? "switching..."
+                : `Your wallet is on another network . switch to ${NETWORK_LABEL}`}
+            </button>
           ) : null}
 
           {/* The hook's connect error is rendered straight from the hook rather

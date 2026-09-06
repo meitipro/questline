@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { buySeasonPass, humaniseStamps, readableError } from "@/lib/actions";
-import { IS_LIVE } from "@/lib/chain";
+import { IS_LIVE, NETWORK_LABEL } from "@/lib/chain";
 import { gen } from "@/lib/format";
 import { useWallet } from "@/lib/useWallet";
 import type { Player, Season, WriteStage } from "@/lib/types";
@@ -31,7 +31,8 @@ const STAGE_COPY: Record<WriteStage, string> = {
 };
 
 export function SeasonPassCard({ season }: { season: Season }) {
-  const { address, onCorrectChain, connecting, hasWallet, connect } = useWallet();
+  const { address, onCorrectChain, connecting, hasWallet, connect, switchChain, switching } =
+    useWallet();
   const [player, setPlayer] = useState<Player | null>(null);
   const [stage, setStage] = useState<WriteStage>("idle");
   const [note, setNote] = useState("");
@@ -155,13 +156,22 @@ export function SeasonPassCard({ season }: { season: Season }) {
             </p>
           ) : null}
 
+          {/* A way out, not just a diagnosis. This said "your wallet is on
+              another network" and stopped there - on the one control in the
+              site that spends 25 GEN, which would have failed for a reason the
+              wallet's own error does not explain. */}
           {onCorrectChain === false ? (
-            <p
-              className="mono"
-              style={{ marginTop: 10, fontSize: 12, color: "var(--fail-text)" }}
+            <button
+              type="button"
+              className="btn-ghost"
+              style={{ marginTop: 10, width: "100%", color: "var(--fail-text)" }}
+              onClick={switchChain}
+              disabled={switching}
             >
-              your wallet is on another network
-            </p>
+              {switching
+                ? "switching..."
+                : `Your wallet is on another network . switch to ${NETWORK_LABEL}`}
+            </button>
           ) : null}
         </>
       )}

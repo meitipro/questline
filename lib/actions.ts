@@ -87,6 +87,48 @@ export async function currentAccount(): Promise<string | null> {
   }
 }
 
+/** The part of EIP-1193 a chain switch needs. */
+export interface ChainSwitcher {
+  request(args: { method: string; params?: unknown[] }): Promise<unknown>;
+}
+
+/**
+ * Move a wallet onto the network this app talks to.
+ *
+ * A plain function rather than part of the hook, so it can be tested against a
+ * fake provider - which is the only way to exercise the branch that matters.
+ *
+ * 4902 is EIP-1193's "unrecognized chain". Studio is not a network any wallet
+ * ships with, so for almost everybody the FIRST attempt fails with it and the
+ * add path is the normal path here, not the edge case. Some wallets nest the
+ * code under `error.data.originalError` instead of putting it on the error, so
+ * both places are checked: miss that and a first-time visitor gets a dead end
+ * exactly where the app should have offered to add the network.
+ *
+ * Returns true when the wallet reports it switched. Otherwise it rethrows the
+ * wallet's own error, so the caller shows what actually happened rather than a
+ * message this file invented.
+ */
+export async function switchToNetwork(eth: ChainSwitcher): Promise<boolean> {
+  try {
+    await eth.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: CHAIN_ID_HEX }],
+    });
+    return true;
+  } catch (e: unknown) {
+    const code = (e as { code?: number })?.code;
+    const nested = (e as { data?: { originalError?: { code?: number } } })?.data
+      ?.originalError?.code;
+    if (code !== 4902 && nested !== 4902) throw e;
+    await eth.request({
+      method: "wallet_addEthereumChain",
+      params: [ADD_CHAIN_PARAMS],
+    });
+    return true;
+  }
+}
+
 function requireLive() {
   if (!IS_LIVE) throw new Error("not_deployed");
 }

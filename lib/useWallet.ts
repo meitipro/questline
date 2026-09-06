@@ -2,8 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { connectWallet, currentAccount, readableError } from "./actions";
-import { CHAIN_ID_HEX } from "./chain";
+import {
+  connectWallet,
+  currentAccount,
+  readableError,
+  switchToNetwork,
+} from "./actions";
+import { CHAIN_ID_HEX, NETWORK_LABEL } from "./chain";
 
 /**
  * Wallet state, shared.
@@ -27,6 +32,16 @@ export interface Wallet {
   error: string;
   hasWallet: boolean;
   connect: () => Promise<string | null>;
+  /**
+   * Move the wallet onto the network this app talks to.
+   *
+   * Exists because "WRONG NETWORK" without it is a dead end. The interface
+   * correctly detected that every write would fail, told the reader so, and
+   * then left them to find the network switcher in their extension and type a
+   * chain id from memory. Naming a problem is not solving it.
+   */
+  switchChain: () => Promise<boolean>;
+  switching: boolean;
 }
 
 /**
@@ -52,6 +67,7 @@ export function useWallet(): Wallet {
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState("");
   const [hasWallet, setHasWallet] = useState(false);
+  const [switching, setSwitching] = useState(false);
 
   const readChain = useCallback(async () => {
     const eth = injected();
@@ -113,5 +129,42 @@ export function useWallet(): Wallet {
     }
   }, [readChain]);
 
-  return { address, onCorrectChain, connecting, error, hasWallet, connect };
+  /**
+   * Ask the wallet to switch. The 4902 "unrecognized chain" fallback lives in
+   * `switchToNetwork` so it can be tested against a fake provider; this only
+   * owns the loading flag and the error.
+   *
+   * `chainChanged` fires on success and the listener above re-reads the chain,
+   * so this does not set `onCorrectChain` itself - one source of truth.
+   */
+  const switchChain = useCallback(async () => {
+    const eth = injected();
+    if (!eth) return false;
+    setSwitching(true);
+    setError("");
+    try {
+      await switchToNetwork(eth);
+      await readChain();
+      return true;
+    } catch (e) {
+      setError(readableError(e));
+      return false;
+    } finally {
+      setSwitching(false);
+    }
+  }, [readChain]);
+
+  return {
+    address,
+    onCorrectChain,
+    connecting,
+    error,
+    hasWallet,
+    connect,
+    switchChain,
+    switching,
+  };
 }
+
+/** The network this app expects, for anything that needs to name it. */
+export const WALLET_NETWORK_LABEL = NETWORK_LABEL;
