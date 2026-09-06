@@ -42,6 +42,15 @@ PARTIAL_MAX = 15
 MAX_ENERGY = 5
 CYCLE_HOURS = 6
 
+# How long the owner gets to settle a finished season before anybody else may.
+#
+# The prize pool can only leave this contract through `close_season`, so an
+# owner-only settlement would mean an absent owner locks every coin players paid
+# in, permanently and with no remedy. Seventy two hours is long enough that
+# settling is normally the owner's job and short enough that nobody's money is
+# hostage to somebody else's week.
+CLOSE_GRACE_HOURS = 72
+
 MAX_HEALTH = 20
 
 # Falling to zero is not a deleted character. The next cycle brings you back
@@ -1081,6 +1090,28 @@ class Questline(gl.Contract):
         self.season_pool = u256(int(self.season_pool) + int(gl.message.value))
         ItemMinted(gl.message.sender_address, item=key, at=now).emit()
 
+    def _require_settleable(self, now: str, who: Address) -> None:
+        """The three conditions under which a season may be settled.
+
+        Pulled out of `close_season` so it can be tested on its own: the method
+        it guards writes storage and emits transfers, so a test that wanted to
+        exercise only the gate would have had to stand a whole world up first.
+        Every branch of this one is pinned in contracts/test_helpers.py.
+        """
+        if self.season_closed:
+            raise gl.vm.UserError(ERR_EXPECTED + " this season is already closed")
+        if now < self.season_ends:
+            raise gl.vm.UserError(ERR_EXPECTED + " the season runs until " + self.season_ends + "Z")
+        if who != self.owner:
+            opens = self._plus_hours(self.season_ends, CLOSE_GRACE_HOURS)
+            if now < opens:
+                raise gl.vm.UserError(
+                    ERR_EXPECTED
+                    + " the owner has until "
+                    + opens
+                    + "Z to settle this season, after which anybody can"
+                )
+
     @gl.public.write
     def close_season(self) -> str:
         """Rank the season and pay the pool out.
@@ -1088,14 +1119,32 @@ class Questline(gl.Contract):
         Records and status changes can act on acceptance. This moves value out
         of the contract, so every transfer here is emitted on finality, where a
         reversal is no longer possible.
+
+        The owner settles the season. ANYONE may settle it once the grace window
+        after the deadline has also passed, and that second path is the whole
+        point of this docstring.
+
+        Coins enter the pool from `buy_season_pass` and `mint_item`, and the only
+        line in this contract that can ever take them out again is inside this
+        method. While it was owner-only, an owner who lost their key, lost
+        interest or simply never came back would have left every coin a player
+        paid locked here permanently - no method left that could release it, and
+        nobody able to add one. A player owed a payout has to have somewhere to
+        go, and "ask the owner nicely" is not somewhere.
+
+        The window is deterministic rather than a vote or an appeal, because
+        there is nothing here to appeal ABOUT. Every input is already storage:
+        the ranking comes from `_ranking()`, the split from `_payout_shares()`,
+        and the amounts from the pool. A stranger settling this computes the
+        identical result the owner would, to the coin. So the window is not
+        protecting a decision - it just gives the owner first refusal on the
+        transaction before the failsafe opens.
+
+        Nobody can settle early. The deadline below binds the owner exactly as
+        it binds anyone else, and `season_ends` is fixed when the season opens.
         """
-        if gl.message.sender_address != self.owner:
-            raise gl.vm.UserError(ERR_EXPECTED + " only the owner closes a season")
-        if self.season_closed:
-            raise gl.vm.UserError(ERR_EXPECTED + " this season is already closed")
         now = self._now()
-        if now < self.season_ends:
-            raise gl.vm.UserError(ERR_EXPECTED + " the season runs until " + self.season_ends + "Z")
+        self._require_settleable(now, gl.message.sender_address)
 
         ranked = self._ranking()
         pool = int(self.season_pool)

@@ -1129,6 +1129,78 @@ check(
     False,
 )
 
+# ---------- who may settle a season, and why anybody eventually may ----------
+#
+# RULE, WRITTEN HERE RATHER THAN IN A COMMENT so that tightening it later has to
+# argue with a failing test instead of deleting a sentence:
+#
+#   close_season is the ONLY method in this contract that can move a coin out of
+#   the prize pool. Coins go in through buy_season_pass and mint_item. While it
+#   was owner-only, an owner who lost their key or simply never returned would
+#   have left every coin a player paid locked in the contract permanently, with
+#   no method left that could release it and nobody able to add one.
+#
+#   So the owner settles it, and after CLOSE_GRACE_HOURS anybody may. That
+#   second path is a failsafe on players' money, not a convenience, and the
+#   window is deterministic because there is nothing here to appeal about: the
+#   ranking, the split and the amounts all come from storage, so a stranger
+#   settling computes the identical result the owner would.
+#
+# If a future change re-gates this to the owner alone, these tests fail, and
+# whoever makes that change has to explain where a player's money goes when the
+# owner is gone.
+
+_OWNER = "0x" + "11" * 20
+_STRANGER = "0x" + "22" * 20
+
+
+def _settle(now, who, ends="2026-10-05T00:00:00", closed=False):
+    """Run the gate alone. Returns "" when it allows, or the refusal text."""
+    c.owner = _OWNER
+    c.season_ends = ends
+    c.season_closed = closed
+    try:
+        c._require_settleable(now, who)
+        return ""
+    except UserError as e:
+        return e.message
+
+
+check(
+    "the owner settles it the moment the season ends",
+    _settle("2026-10-05T00:00:01", _OWNER),
+    "",
+)
+check(
+    "nobody settles it early, not even the owner",
+    "the season runs until" in _settle("2026-10-04T23:59:59", _OWNER),
+    True,
+)
+check(
+    "a stranger is refused during the owner's grace window",
+    "the owner has until" in _settle("2026-10-06T00:00:00", _STRANGER),
+    True,
+)
+check(
+    "and the refusal says exactly when they may return",
+    "2026-10-08T00:00:00" in _settle("2026-10-06T00:00:00", _STRANGER),
+    True,
+)
+check(
+    "a stranger MAY settle once the grace window has passed - the money is not trapped",
+    _settle("2026-10-08T00:00:01", _STRANGER),
+    "",
+)
+check(
+    "an already closed season refuses everybody",
+    "already closed" in _settle("2026-10-09T00:00:00", _OWNER, closed=True),
+    True,
+)
+# The grace window has to be a real window. Zero would mean the owner never had
+# first refusal; forever would mean the money is trapped after all.
+check("the grace window is a positive number of hours", questline.CLOSE_GRACE_HOURS > 0, True)
+check("and it is days, not years", questline.CLOSE_GRACE_HOURS <= 24 * 30, True)
+
 # ---------- report ----------
 
 print(f"{PASSED} passed, {len(FAILED)} failed")

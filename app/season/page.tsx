@@ -240,6 +240,20 @@ export default async function SeasonPage() {
               the appeal window closes, because a reversal after a payout cannot be
               undone.
             </p>
+            {/* The failsafe, said out loud on the page where somebody is about to
+                pay 25 GEN into a pool. It is the answer to the obvious question -
+                what happens to my money if whoever runs this disappears - and a
+                product that asks you to trust code rather than an operator has to
+                answer it before it is asked. */}
+            <p className="note" style={{ marginTop: 10 }}>
+              The season is settled by whoever runs it, and if they do not, anybody
+              can settle it three days after the season ends. That second path
+              exists because this pool has exactly one way out of the contract: an
+              owner who vanished would otherwise have locked every coin paid into
+              it, permanently. Nothing about the result changes depending on who
+              sends that transaction - the ranking, the split and the amounts are
+              all read from storage.
+            </p>
             <p className="note" style={{ marginTop: 10 }}>
               The pool pays {"50, 30 and 20"} percent to the top three, or the whole
               pool split between however many placed if fewer than three did. The
