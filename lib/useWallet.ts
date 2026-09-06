@@ -6,6 +6,7 @@ import {
   connectWallet,
   currentAccount,
   readableError,
+  revokeAccess,
   switchToNetwork,
 } from "./actions";
 import { CHAIN_ID_HEX, NETWORK_LABEL } from "./chain";
@@ -32,6 +33,14 @@ export interface Wallet {
   error: string;
   hasWallet: boolean;
   connect: () => Promise<string | null>;
+  /**
+   * Forget the wallet, and revoke the grant where the wallet supports it.
+   *
+   * `revoked` on the result says which of the two happened, because they are
+   * genuinely different: a revoked grant survives a reload, a cleared local
+   * state does not.
+   */
+  disconnect: () => Promise<{ revoked: boolean }>;
   /**
    * Move the wallet onto the network this app talks to.
    *
@@ -80,6 +89,33 @@ export function useWallet(): Wallet {
     }
   }, []);
 
+  /* Extensions do not all inject before React mounts.
+   *
+   * `hasWallet` was read once, in an effect that runs on the first render, and
+   * never again - so a wallet that injected a moment later left the header
+   * saying "no wallet" until a full reload, with a Connect button that never
+   * appeared. Most extensions are in place first, which is exactly why this
+   * fails for a minority and looks like it works.
+   *
+   * Polled briefly rather than waited on: EIP-1193 has no "I have arrived"
+   * event that every wallet fires. The interval clears itself the moment one
+   * appears, and gives up after a few seconds rather than spinning forever on a
+   * browser that genuinely has none. */
+  useEffect(() => {
+    if (injected()) return;
+    let tries = 0;
+    const id = setInterval(() => {
+      tries += 1;
+      if (injected()) {
+        setHasWallet(true);
+        clearInterval(id);
+      } else if (tries > 20) {
+        clearInterval(id);
+      }
+    }, 150);
+    return () => clearInterval(id);
+  }, []);
+
   useEffect(() => {
     const eth = injected();
     setHasWallet(Boolean(eth));
@@ -111,7 +147,11 @@ export function useWallet(): Wallet {
       eth.removeListener?.("accountsChanged", onAccounts);
       eth.removeListener?.("chainChanged", onChain);
     };
-  }, [readChain]);
+    /* `hasWallet` is a dependency so that a wallet arriving late gets its
+     * account read and its listeners attached. Without it the poll above would
+     * flip the flag, the Connect button would appear, and nothing would be
+     * listening for the account or chain changes behind it. */
+  }, [readChain, hasWallet]);
 
   const connect = useCallback(async () => {
     setConnecting(true);
@@ -154,6 +194,23 @@ export function useWallet(): Wallet {
     }
   }, [readChain]);
 
+  /**
+   * Drop the wallet.
+   *
+   * The local state is cleared either way - that is the part this app controls
+   * and it is what makes the interface stop addressing an account the reader
+   * has finished with. The revoke is the part that survives a reload, and only
+   * some wallets offer it.
+   */
+  const disconnect = useCallback(async () => {
+    const eth = injected();
+    const revoked = eth ? await revokeAccess(eth) : false;
+    setAddress(null);
+    setOnCorrectChain(null);
+    setError("");
+    return { revoked };
+  }, []);
+
   return {
     address,
     onCorrectChain,
@@ -161,6 +218,7 @@ export function useWallet(): Wallet {
     error,
     hasWallet,
     connect,
+    disconnect,
     switchChain,
     switching,
   };

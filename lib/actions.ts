@@ -93,6 +93,36 @@ export interface ChainSwitcher {
 }
 
 /**
+ * Actually disconnect, where the wallet allows it.
+ *
+ * EIP-1193 has no disconnect method, and this is why nearly every dapp's
+ * "disconnect" is a lie: it clears the address out of the page's own state, and
+ * the next reload calls `eth_accounts`, gets the still-granted account back and
+ * silently reconnects. The button looked like it did something and did not.
+ *
+ * `wallet_revokePermissions` (EIP-2255, MetaMask 11.6 and later) revokes the
+ * grant for real, so `eth_accounts` returns nothing afterwards and the reload
+ * stays disconnected.
+ *
+ * Returns whether the permission was genuinely revoked. A wallet that does not
+ * implement it is not an error - the caller still clears its own state, and the
+ * interface says which of the two happened rather than claiming the stronger
+ * one. Telling somebody they have disconnected when they have not is worse than
+ * telling them the wallet would not let go.
+ */
+export async function revokeAccess(eth: ChainSwitcher): Promise<boolean> {
+  try {
+    await eth.request({
+      method: "wallet_revokePermissions",
+      params: [{ eth_accounts: {} }],
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Move a wallet onto the network this app talks to.
  *
  * A plain function rather than part of the hook, so it can be tested against a

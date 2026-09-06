@@ -19,7 +19,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { switchToNetwork } from "../../lib/actions.ts";
+import { revokeAccess, switchToNetwork } from "../../lib/actions.ts";
 
 /** A wallet that answers however the test says, and records what it was asked. */
 function wallet(behaviour) {
@@ -102,4 +102,66 @@ test("the switch names a chain id, not a chain name", async () => {
   await switchToNetwork(w);
   assert.ok(Array.isArray(sent), "params must be an array");
   assert.match(String(sent[0].chainId), /^0x[0-9a-f]+$/i, "chainId must be hex");
+});
+
+/* -------------------------------------------------------------------------
+ * Disconnecting.
+ *
+ * EIP-1193 has no disconnect, which is why almost every dapp's disconnect is a
+ * lie: it clears the address out of the page's own state, and the next reload
+ * calls eth_accounts, gets the still-granted account back and reconnects
+ * silently. The button looked like it worked and did not.
+ *
+ * wallet_revokePermissions revokes the grant for real. The return value here is
+ * what lets the interface say WHICH of the two happened rather than claiming
+ * the stronger one.
+ * ------------------------------------------------------------------------- */
+
+test("a wallet that supports revoking really disconnects", async () => {
+  const w = wallet({ wallet_revokePermissions: null });
+  assert.equal(await revokeAccess(w), true);
+  assert.deepEqual(w.calls, ["wallet_revokePermissions"]);
+});
+
+test("it asks to revoke eth_accounts specifically", async () => {
+  // An empty params object revokes nothing on some wallets and everything on
+  // others. Name the permission.
+  let sent = null;
+  const w = wallet({
+    wallet_revokePermissions: (params) => {
+      sent = params;
+      return null;
+    },
+  });
+  await revokeAccess(w);
+  assert.ok(Array.isArray(sent), "params must be an array");
+  assert.ok(
+    Object.prototype.hasOwnProperty.call(sent[0], "eth_accounts"),
+    "must name eth_accounts"
+  );
+});
+
+test("a wallet that cannot revoke reports false rather than throwing", async () => {
+  // Older MetaMask and most other wallets. The caller still clears its own
+  // state; what it must NOT do is tell the reader they are disconnected when
+  // the grant is still standing and the next reload will reconnect.
+  const w = wallet({
+    wallet_revokePermissions: () => {
+      const e = new Error("The method does not exist");
+      e.code = -32601;
+      throw e;
+    },
+  });
+  assert.equal(await revokeAccess(w), false);
+});
+
+test("a user rejecting the revoke also reports false", async () => {
+  const w = wallet({
+    wallet_revokePermissions: () => {
+      const e = new Error("user rejected");
+      e.code = 4001;
+      throw e;
+    },
+  });
+  assert.equal(await revokeAccess(w), false);
 });

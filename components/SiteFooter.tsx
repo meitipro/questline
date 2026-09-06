@@ -151,7 +151,12 @@ export function SiteFooter() {
             * contract to name, and printing a placeholder there would be the
             * exact kind of small dishonesty the rest of this site avoids. */}
           {IS_LIVE ? (
-            <span>
+            /* It has to be allowed to wrap. An address is forty two characters
+             * with no space in it, and in this mono face at this letter spacing
+             * that is 373px - so on a 320px phone the footer pushed the whole
+             * page 26px sideways. Invisible until a contract is configured,
+             * which is why a sweep of the demonstration world never saw it. */
+            <span style={{ maxWidth: "100%", overflowWrap: "anywhere" }}>
               CONTRACT{" "}
               {HAS_EXPLORER ? (
                 <a

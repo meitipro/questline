@@ -52,7 +52,15 @@ export function SiteHeader({ variant }: { variant?: "solid" | "over" }) {
           style={{ display: "flex", alignItems: "center", gap: 10, height: 32, color: brand }}
         >
           <Mark size={26} />
-          <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-.03em", whiteSpace: "nowrap" }}>
+          {/* The wordmark hides on a narrow screen, leaving the mark as the
+              home link. Once a contract is configured the header also carries
+              a wallet pill, and logo plus pill plus the call to action needed
+              329px of a 320px phone - the page scrolled sideways by 42. The
+              mark alone still says where you are and still goes home. */}
+          <span
+            className="header-wordmark"
+            style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-.03em", whiteSpace: "nowrap" }}
+          >
             questline
           </span>
         </Link>

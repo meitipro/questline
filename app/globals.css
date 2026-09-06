@@ -851,6 +851,75 @@ a.feed-row:hover {
   cursor: pointer;
   flex: 0 0 auto;
 }
+/* The menu behind the address pill.
+ *
+ * Anchored to the pill and pulled to its right edge, because the pill sits at
+ * the far right of the header and a menu that grew rightwards would leave the
+ * viewport. z-index above the sticky header for the same reason the header has
+ * one at all. */
+.wallet-menu {
+  /* top and right come from the component, measured off the pill and clamped to
+     the viewport - see WalletButton. Anchoring here could only ever be right at
+     one width. */
+  position: fixed;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+}
+.wallet-menu-item {
+  display: block;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--cream);
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.wallet-menu-item:hover {
+  background: var(--hover);
+}
+.wallet-menu-danger {
+  color: var(--fail-text);
+}
+/* The address in full, because the pill only ever shows six characters of it
+ * and "is this the account I think it is" is the question somebody opening
+ * this menu is most likely to be asking. */
+/* The disconnect receipt. Out of the flex flow entirely: as a flex item its two
+ * lines widened the header and pushed a 320px page sideways. */
+.wallet-note {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  max-width: min(260px, calc(100vw - 24px));
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  text-align: right;
+}
+
+.wallet-menu-address {
+  padding: 6px 10px;
+  margin: 2px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  font-size: 11px;
+  color: var(--muted);
+  word-break: break-all;
+  line-height: 1.5;
+}
+
 .wallet-pill:hover {
   border-color: var(--muted);
   color: var(--cream);
@@ -1099,6 +1168,26 @@ a.feed-row:hover {
   /* Then the theme pill, which is a preference rather than a destination. */
   .header-extras {
     display: none !important;
+  }
+  /* And the wordmark, once the header is also carrying a wallet. The mark on
+     its own is still the home link and still identifies the site; a page that
+     scrolls sideways is not a trade worth making for six characters of text. */
+  .header-wordmark {
+    display: none;
+  }
+  .wallet-pill {
+    padding: 0 9px;
+  }
+  /* The header's network warning goes too. Address plus SWITCH NETWORK plus the
+     call to action needed 391px of a 320px phone. It is a desktop convenience:
+     both screens that are about to ask for a signature - the play console and
+     the season pass - carry their own full width switch button with the whole
+     sentence, which is where somebody about to act will actually be. */
+  .wallet-pill-network {
+    display: none;
+  }
+  .wallet-menu {
+    min-width: 0;
   }
   .cta-fill {
     font-size: 14px;
