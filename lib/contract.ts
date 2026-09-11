@@ -13,7 +13,7 @@
 
 import { createClient } from "genlayer-js";
 
-import { errorText, saysNoSuchLine } from "./absence";
+import { errorText, saysNoSuchLine, saysRateLimited } from "./absence";
 import { CHAIN, IS_LIVE, QUESTLINE } from "./chain";
 import {
   sampleChronicle,
@@ -176,6 +176,16 @@ async function callView(functionName: string, args: unknown[]): Promise<string> 
       break;
     } catch (e) {
       last = e;
+      /* Never retry a rate limit. Studio allows thirty reads a minute and a
+       * page makes several; three attempts each spent the whole budget in a
+       * handful of loads, so every page after that fell back to "the node did
+       * not answer" - the retry manufacturing the outage it was meant to ride
+       * out. It is remembered like any other failure, so the second read in
+       * the same render does not spend another request finding out. */
+      if (saysRateLimited(errorText(e))) {
+        failures.set(key, { at: Date.now(), error: last });
+        throw last;
+      }
       if (attempt >= READ_ATTEMPTS) {
         failures.set(key, { at: Date.now(), error: last });
         throw last;

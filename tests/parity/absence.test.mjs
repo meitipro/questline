@@ -16,7 +16,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { NO_SUCH_LINE, errorText, saysNoSuchLine } from "../../lib/absence.ts";
+import { NO_SUCH_LINE, errorText, saysNoSuchLine, saysRateLimited } from "../../lib/absence.ts";
 
 const TAGGED = `[EXPECTED] ${NO_SUCH_LINE}`;
 const B64 = Buffer.from(TAGGED).toString("base64");
@@ -115,3 +115,43 @@ test("errorText survives things that are not errors at all", () => {
     assert.equal(saysNoSuchLine(errorText(value)), false);
   }
 });
+
+/* -------------------------------------------------------------------------
+ * Rate limits.
+ *
+ * The read path retries, and a rate limit is the one error a retry is certain
+ * to make worse - three attempts per read against a budget of thirty a minute.
+ * So it has to be recognised, and it is only recognisable in the WHOLE error:
+ * genlayer-js puts "An unknown RPC error occurred" on top and the real words in
+ * the cause. This is the shape captured from a live Studio node.
+ * ------------------------------------------------------------------------- */
+
+function studioRateLimit() {
+  const e = new Error("An unknown RPC error occurred.");
+  e.cause = new Error("GenLayer RPC error (gen_call): Rate limit exceeded: 30 requests per minute");
+  return e;
+}
+
+test("Studio's rate limit is recognised in the whole error", () => {
+  assert.equal(saysRateLimited(errorText(studioRateLimit())), true);
+});
+
+test("but not from the top level message alone, which says nothing", () => {
+  // Pins WHY callers must pass errorText(e): the message on top is generic.
+  assert.equal(saysRateLimited(studioRateLimit().message), false);
+});
+
+test("a rate limit is not absence", () => {
+  assert.equal(saysNoSuchLine(errorText(studioRateLimit())), false);
+});
+
+for (const [label, message] of [
+  ["a genuine missing line", `UserError: [EXPECTED] ${NO_SUCH_LINE}`],
+  ["a timeout", "get_world did not answer within 6000ms"],
+  ["a dropped socket", "fetch failed ECONNRESET"],
+  ["a missing contract", "Contract 0x7aBc not found"],
+]) {
+  test(`${label} is NOT a rate limit, so it is still retried`, () => {
+    assert.equal(saysRateLimited(message), false);
+  });
+}

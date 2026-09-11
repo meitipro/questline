@@ -85,3 +85,25 @@ export function errorText(e: unknown): string {
     return String((e as { message?: unknown } | null)?.message ?? e);
   }
 }
+
+/**
+ * Whether an error is Studio's rate limit.
+ *
+ * Studio refuses more than thirty reads a minute with "Rate limit exceeded: 30
+ * requests per minute", and genlayer-js reports that at the top level as the
+ * useless "An unknown RPC error occurred". The words only exist further down,
+ * in the error's cause - so pass this `errorText(e)`, not `e.message`.
+ *
+ * It matters because the read path retries, and a rate limit is the one error a
+ * retry is guaranteed to make worse: up to three attempts per read, several
+ * reads per page, against a budget of thirty a minute. Measured on a dev server
+ * pointed at a live contract - a handful of page loads spent the whole minute,
+ * and every page after that reported that the node did not answer.
+ *
+ * Not absence either: a rate limited read says nothing about whether the thing
+ * exists, which is why saysNoSuchLine stays false for it.
+ */
+export function saysRateLimited(message: string): boolean {
+  const text = message.toLowerCase();
+  return text.includes("rate limit exceeded") || text.includes("too many requests");
+}

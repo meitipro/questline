@@ -67,16 +67,17 @@ export default async function PlayPage() {
           deployed it can publish them.
         </p>
         <p className="note" style={{ marginTop: 14, maxWidth: "62ch" }}>
-          If that account is yours: call <span className="mono">register_items</span>{" "}
-          once, then <span className="mono">add_region</span> for each region, in
-          that order - a grant is refused against an empty registry.
+          If that account is yours, publish it from the owner page. It sends the
+          item registry and then the four opening regions, in that order - a grant
+          is refused against an empty registry - and the contract refuses any
+          other wallet.
         </p>
         <div style={{ display: "flex", gap: 12, marginTop: 26, flexWrap: "wrap" }}>
-          <Link href="/world" className="btn">
-            What a region carries
+          <Link href="/admin" className="btn">
+            Publish the opening world
           </Link>
-          <Link href="/verify" className="btn-ghost">
-            Verify a roll
+          <Link href="/world" className="btn-ghost">
+            What a region carries
           </Link>
         </div>
       </div>

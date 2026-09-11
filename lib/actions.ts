@@ -258,6 +258,88 @@ export async function enterWorld(
 }
 
 /**
+ * Register the item registry, as the owner, from a browser wallet.
+ *
+ * Publishing a world used to be possible only from a terminal holding the
+ * owner's private key. An owner who deployed through the Studio interface has
+ * no key to hand a script - Studio keeps it in the browser - so the only way in
+ * was to call five methods by hand and paste a paragraph into each. This and
+ * `publishRegion` are what /admin sends instead.
+ *
+ * Idempotent in the contract, not here: register_items skips any name it
+ * already holds, so a second press after a dropped connection finishes the job
+ * rather than doubling it.
+ */
+export async function publishItems(
+  address: `0x${string}`,
+  csv: string,
+  onStage?: Stage
+): Promise<string> {
+  requireLive();
+  const client = writeClient(address);
+
+  onStage?.("signing");
+  const hash = await client.writeContract({
+    address: QUESTLINE,
+    functionName: "register_items",
+    args: [csv],
+  } as any);
+
+  onStage?.("sent", "registering the items");
+  const done: any = await client.waitForTransactionReceipt({
+    hash,
+    status: TransactionStatus.ACCEPTED,
+  } as any);
+  assertExecuted(done, "registering the items");
+  onStage?.("accepted");
+  return hash;
+}
+
+/**
+ * Publish one region, as the owner. The contract refuses a duplicate name and
+ * any sender but the owner, and both refusals come back as the contract's own
+ * sentence through assertExecuted.
+ */
+export async function publishRegion(
+  address: `0x${string}`,
+  region: {
+    name: string;
+    description: string;
+    rules: string;
+    max_magnitude: number;
+    depth: number;
+    exits: string;
+  },
+  onStage?: Stage
+): Promise<string> {
+  requireLive();
+  const client = writeClient(address);
+
+  onStage?.("signing");
+  const hash = await client.writeContract({
+    address: QUESTLINE,
+    functionName: "add_region",
+    args: [
+      region.name,
+      region.description,
+      region.rules,
+      region.max_magnitude,
+      region.depth,
+      region.exits,
+    ],
+  } as any);
+
+  onStage?.("sent", `publishing ${region.name}`);
+  const done: any = await client.waitForTransactionReceipt({
+    hash,
+    status: TransactionStatus.ACCEPTED,
+  } as any);
+  assertExecuted(done, `publishing ${region.name}`);
+  onStage?.("accepted");
+  return hash;
+}
+
+/**
  * One action, one transaction. The resolution is the moment of the game, so the
  * caller narrates each stage instead of spinning.
  */
