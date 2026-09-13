@@ -24,6 +24,12 @@ roll attached.
     network    GenLayer Studio            chain 61999, flip with one env var
     site       Next.js 14 App Router      port 3400
 
+Deployed on GenLayer Studio at
+[`0x744ddd0794945e3E487c0F82b03af544C91E1718`](https://explorer-studio.genlayer.com/address/0x744ddd0794945e3E487c0F82b03af544C91E1718).
+`npm run match` against it reports COSMETIC ONLY: the Studio editor stored the
+file with CRLF line endings, and not one byte Python executes differs from
+`contracts/questline.py`. Lint and validation pass on the deployed bytes.
+
 Nobody here can cheat, and that includes the people who built it. The operator
 cannot mint an item, cannot reroll a loss, and cannot change what a rule said
 after you played by it. Every claim on that list is something a reader can check
