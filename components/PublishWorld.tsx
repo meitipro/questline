@@ -84,6 +84,11 @@ export function PublishWorld({
   const router = useRouter();
   const [steps, setSteps] = useState<Step[]>(() => planFor(items, regions));
   const [running, setRunning] = useState(false);
+  /* A stranger's attempt to change a world that is already published. */
+  const [probe, setProbe] = useState<{
+    state: "idle" | "sending" | "refused" | "declined" | "accepted";
+    note?: string;
+  }>({ state: "idle" });
 
   const isOwner =
     !!wallet.address && !!owner && wallet.address.toLowerCase() === owner.toLowerCase();
@@ -128,6 +133,34 @@ export function PublishWorld({
 
     setRunning(false);
     router.refresh();
+  }
+
+  /**
+   * Send a change from a wallet that is not the owner, to watch it refused.
+   *
+   * register_items, because it is the one owner method that changes nothing
+   * even if it were somehow allowed: it skips every name the registry already
+   * holds. So the demonstration cannot damage the world whatever happens - and
+   * if the contract ever accepted it, that is a real defect, said so in red.
+   */
+  async function tryAnyway() {
+    if (!wallet.address) return;
+    setProbe({ state: "sending", note: "sign it in your wallet" });
+    try {
+      await publishItems(wallet.address as `0x${string}`, OPENING_REGISTRY, (stage, note) => {
+        if (stage === "sent") setProbe({ state: "sending", note: note ?? "the network is running it" });
+      });
+      setProbe({ state: "accepted" });
+    } catch (e) {
+      const message = humaniseStamps(readableError(e));
+      /* A wallet declining to sign is not the contract refusing, and saying
+       * "refused by the contract" for it would claim a check that never ran. */
+      setProbe(
+        /reject|denied|declin|cancel/i.test(message)
+          ? { state: "declined", note: message }
+          : { state: "refused", note: message }
+      );
+    }
   }
 
   return (
@@ -183,6 +216,47 @@ export function PublishWorld({
                 Enter it
               </Link>
             </div>
+
+            {/* Once the world is published this page used to show every wallet
+                the same "on chain" message, so the one demonstration of the
+                owner check - a stranger's write refused - disappeared at exactly
+                the moment there was a world worth protecting. A refused write is
+                also a public record on the explorer, which makes it the strongest
+                single piece of evidence this page can produce. */}
+            {wallet.address && !isOwner ? (
+              <>
+                <p className="note">
+                  This wallet is not the owner, so the contract will refuse any
+                  change it tries to make to the world.
+                </p>
+                <button
+                  className="btn-ghost"
+                  onClick={tryAnyway}
+                  disabled={probe.state === "sending"}
+                >
+                  {probe.state === "sending"
+                    ? probe.note ?? "sending..."
+                    : "Try to change it anyway, and watch the contract refuse"}
+                </button>
+                {probe.state === "refused" ? (
+                  <p className="note" style={{ color: "var(--success-text)" }}>
+                    Refused by the contract, as it should be: {probe.note}
+                  </p>
+                ) : null}
+                {probe.state === "declined" ? (
+                  <p className="note">
+                    You declined to sign it, so nothing was sent and nothing was
+                    refused.
+                  </p>
+                ) : null}
+                {probe.state === "accepted" ? (
+                  <div className="blocked">
+                    The contract accepted a change from a wallet that is not its
+                    owner. That should be impossible - report it.
+                  </div>
+                ) : null}
+              </>
+            ) : null}
           </>
         ) : !wallet.hasWallet ? (
           <a

@@ -272,13 +272,21 @@ export default async function WorldPage() {
           happened. That is the cost of the guarantee, and it is why actions are
           deliberate and scarce rather than continuous.
         </p>
+        {/* The last sentence here used to say an appeal "costs the protocol
+            bond, which is deliberately larger than any single action is worth,
+            so appealing is a season ending move". Nothing in this contract or
+            this site backs any of it: Questline has no appeal method, the bond is
+            GenLayer's and not ours to size, and "deliberately" claimed an intent
+            nobody here controls. It now says what the code does - lib/actions.ts
+            reads a turn on ACCEPTED and a payment only on FINALIZED. */}
         <p className="note" style={{ marginTop: 14, maxWidth: "72ch" }}>
           Two more things the shape decides. The narration is written by a
           model, so its prose varies between turns even where the rules do not:
           the effect, the target and the magnitude are what the criteria hold.
-          And an appeal costs the protocol bond, which is deliberately larger than
-          any single action is worth, so appealing is a season ending move rather
-          than a turn by turn one.
+          And a turn is shown the moment validators accept it, because it is a
+          record, while anything that moves GEN - a season pass, a mint fee - is
+          only called paid once the transaction is final, because until then it
+          can still be appealed and reversed.
         </p>
       </div>
     </div>
