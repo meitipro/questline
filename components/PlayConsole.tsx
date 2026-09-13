@@ -11,6 +11,7 @@ import {
   readableError,
 } from "@/lib/actions";
 import { IS_LIVE, NETWORK_LABEL } from "@/lib/chain";
+import { entryFrom, type Entry } from "@/lib/entry";
 import {
   ago,
   bandCap,
@@ -86,6 +87,24 @@ export function PlayConsole({
   const address = wallet.address;
   const [player, setPlayer] = useState<Player | null>(null);
   /**
+   * Whether this address has entered, as three states rather than two.
+   *
+   * `needsEntry` used to be `player?.exists === false`. But the absent payload
+   * is never committed as the player - it has no inventory or energy for the
+   * rail to read - so `player` stayed null for every first-time wallet,
+   * `null?.exists` is undefined, and the page offered Act to an address the
+   * contract had never seen while the panel beside it said "enter the world".
+   * Every first run hit it; found by the owner's first real wallet.
+   *
+   * Nor can "no player" simply mean "not entered": it is also what a read that
+   * is still loading, or one that failed, looks like - and offering Enter on a
+   * failed read would be a claim the chain never made.
+   */
+  const [entry, setEntry] = useState<Entry>("unknown");
+  /** The address loadPlayer is answering for, so a slow reply about an account
+   *  the wallet has since switched away from cannot land on the new one. */
+  const forAddress = useRef<string | null>(null);
+  /**
    * Items this browser granted, which exist in no chronicle.
    *
    * Kept beside the player rather than inside it, because `player` is replaced
@@ -118,8 +137,17 @@ export function PlayConsole({
   const loadPlayer = useCallback(async (who: string) => {
     try {
       const response = await fetch(`/api/player/${who}`, { cache: "no-store" });
-      if (!response.ok) return;
+      if (forAddress.current?.toLowerCase() !== who.toLowerCase()) return;
+      /* It returned silently here, which left a connected wallet looking at a
+       * button that could not do anything and no word about why. */
+      if (!response.ok) {
+        setBlocked(
+          "Could not read your character just now. Nothing is lost; try again in a moment."
+        );
+        return;
+      }
       const blob = await response.json();
+      if (forAddress.current?.toLowerCase() !== who.toLowerCase()) return;
 
       // "unavailable" means the node did not answer and the payload is the
       // seeded character, not this one. Showing it would hand a connected
@@ -142,7 +170,11 @@ export function PlayConsole({
        * no contract is configured, since the seeded fallback always has an
        * inventory. */
       const fresh = blob?.data as Player | undefined;
-      if (fresh?.exists) {
+      /* lib/entry.ts decides, so the rule is tested rather than restated here.
+       * Only the contract's own exists:false may say absent. */
+      const verdict = entryFrom(blob);
+      if (verdict !== "unknown") setEntry(verdict);
+      if (verdict === "entered" && fresh) {
         setPlayer(fresh);
         /* Storage is now the authority on what this character carries, so the
          * browser's own record of what it granted is discarded. Keeping it
@@ -154,7 +186,14 @@ export function PlayConsole({
         setFeed(blob.lines.map((line: Line) => ({ line, origin: "chain" as Origin })));
       }
     } catch {
-      /* Leave whatever the page was rendered with. */
+      /* Leave whatever the page was rendered with - but say so. With the entry
+       * state still unknown, silence here would leave "Reading..." up forever
+       * with nothing to press. */
+      if (forAddress.current?.toLowerCase() === who.toLowerCase()) {
+        setBlocked(
+          "Could not read your character just now. Nothing is lost; try again in a moment."
+        );
+      }
     }
   }, []);
 
@@ -168,14 +207,22 @@ export function PlayConsole({
       // Demonstration mode puts you in a seeded character so the core screen is
       // legible before a deploy. It is labelled as such, everywhere.
       setPlayer(samplePlayer(SAMPLE_YOU));
+      setEntry("entered");
       setLocalItems(new Set());
       return;
     }
+    forAddress.current = address ?? null;
     if (!address) {
       setPlayer(null);
+      setEntry("unknown");
       setLocalItems(new Set());
       return;
     }
+    /* A different account is a different character. Forget the last one's
+     * answer before asking about this one, rather than showing it meanwhile. */
+    setPlayer(null);
+    setEntry("unknown");
+    setBlocked("");
     loadPlayer(address);
   }, [live, address, loadPlayer]);
 
@@ -445,7 +492,10 @@ export function PlayConsole({
   };
 
   const needsWallet = live && !address;
-  const needsEntry = live && Boolean(address) && player?.exists === false;
+  const needsEntry = live && Boolean(address) && entry === "absent";
+  /* Connected, but the contract has not answered about this address yet, or the
+   * read failed. Neither is permission to act, and neither says it never entered. */
+  const checking = live && Boolean(address) && entry === "unknown";
 
   const validators = useMemo(
     () => [0, 1, 2, 3, 4].map((i) => ({ delay: `${i * 0.14}s` })),
@@ -574,7 +624,7 @@ export function PlayConsole({
                 if (e.key === "Enter") onAct();
               }}
               placeholder="type one action"
-              disabled={pending || needsWallet || needsEntry}
+              disabled={pending || needsWallet || needsEntry || checking}
               maxLength={400}
               aria-label="Your action"
             />
@@ -590,6 +640,19 @@ export function PlayConsole({
                 style={{ padding: "14px 30px", fontSize: 18 }}
               >
                 Enter the world
+              </button>
+            ) : checking ? (
+              <button
+                className="btn"
+                onClick={() => {
+                  if (!address) return;
+                  setBlocked("");
+                  loadPlayer(address);
+                }}
+                disabled={!blocked}
+                style={{ padding: "14px 30px", fontSize: 18 }}
+              >
+                {blocked ? "Try again" : "Reading..."}
               </button>
             ) : (
               <button
@@ -706,8 +769,23 @@ export function PlayConsole({
             <p className="note" style={{ marginTop: 12 }}>
               {needsWallet
                 ? "Connect a wallet to see your character. Every action is a transaction you sign, so the world knows you by your address and by nothing else."
-                : "Enter the world to be given a character."}
+                : checking
+                  ? "Reading your character from the contract."
+                  : "Enter the world to be given a character."}
             </p>
+            {/* The instruction and the action together. This panel said "enter
+                the world" with nothing to press beside it, which is exactly the
+                sentence that sent the first real player looking for a button. */}
+            {needsEntry ? (
+              <button
+                className="btn"
+                onClick={onEnter}
+                disabled={pending}
+                style={{ marginTop: 14, width: "100%" }}
+              >
+                Enter the world
+              </button>
+            ) : null}
           </div>
         )}
 
