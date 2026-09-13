@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { buySeasonPass, humaniseStamps, readableError } from "@/lib/actions";
 import { IS_LIVE, NETWORK_LABEL } from "@/lib/chain";
 import { gen } from "@/lib/format";
+import { entryFrom, type Entry } from "@/lib/entry";
 import { useWallet } from "@/lib/useWallet";
 import type { Player, Season, WriteStage } from "@/lib/types";
 
@@ -38,24 +39,45 @@ export function SeasonPassCard({ season }: { season: Season }) {
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+  /* Whether this address has entered, read the same way /play reads it.
+   *
+   * The buy button used to stay live for a wallet that had never entered, with
+   * only a note beneath it, and the first real wallet paid 25 GEN into a call
+   * the contract refused: tx 0x41e4f0e5 on 0x1998E9Cb, Rollback, "you have not
+   * entered the world yet". Studio credited the value anyway (value_credited
+   * true), so the 25 GEN sits in the contract outside the season pool, where no
+   * method can pay it out. A payment the contract will refuse must not be
+   * offered at all - and "could not read" is not permission either. */
+  const [entry, setEntry] = useState<Entry>("unknown");
+  const [readFailed, setReadFailed] = useState(false);
 
   useEffect(() => {
     if (!address) {
       setPlayer(null);
+      setEntry("unknown");
       return;
     }
+    /* A different account is a different character: forget the last one's
+     * answer before asking about this one, rather than showing it meanwhile. */
+    setEntry("unknown");
+    setReadFailed(false);
     let cancelled = false;
     fetch(`/api/player/${address}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((blob) => {
+        if (cancelled) return;
         // Same rule as everywhere else: an "unavailable" payload is the seeded
         // character, not this one, and telling somebody they already hold a pass
         // on the strength of seeded data is how a real purchase gets skipped.
-        if (cancelled || !blob?.data || blob.status === "unavailable") return;
-        setPlayer(blob.data as Player);
+        if (!blob || blob.status === "unavailable") {
+          setReadFailed(true);
+          return;
+        }
+        setEntry(entryFrom(blob));
+        if (blob.data) setPlayer(blob.data as Player);
       })
       .catch(() => {
-        /* The card falls back to its unknown state, which is honest. */
+        if (!cancelled) setReadFailed(true);
       });
     return () => {
       cancelled = true;
@@ -87,6 +109,7 @@ export function SeasonPassCard({ season }: { season: Season }) {
       await connect();
       return;
     }
+    if (entry !== "entered") return;
     setError("");
     setStage("signing");
     try {
@@ -138,21 +161,28 @@ export function SeasonPassCard({ season }: { season: Season }) {
             className="btn"
             style={{ marginTop: 16, width: "100%" }}
             onClick={buy}
-            disabled={busy || connecting || !hasWallet}
+            disabled={busy || connecting || !hasWallet || (Boolean(address) && entry !== "entered")}
           >
             {!hasWallet
               ? "No wallet in this browser"
               : !address
                 ? "Connect a wallet"
-                : busy
-                  ? "working..."
-                  : "Buy a season pass"}
+                : entry === "absent"
+                  ? "Enter the world first"
+                  : entry === "unknown"
+                    ? readFailed
+                      ? "Could not read your character . reload to try"
+                      : "Reading..."
+                    : busy
+                      ? "working..."
+                      : "Buy a season pass"}
           </button>
 
-          {address && player && !player.exists ? (
+          {address && entry === "absent" ? (
             <p className="note" style={{ marginTop: 10 }}>
-              You have not entered the world yet. A pass without a character has
-              nothing to rank.
+              You have not entered the world yet, and the contract refuses a pass
+              for an address it has never seen. <a href="/play">Enter it first</a>,
+              then come back.
             </p>
           ) : null}
 

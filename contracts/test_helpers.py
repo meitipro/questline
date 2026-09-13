@@ -397,6 +397,53 @@ check("you cannot move somewhere with no exit", caps("move", "the throne room", 
 check("you can take a published exit", caps("move", "the long stair", 4), ("move", "the long stair", 0))
 check("an exitless region traps you", caps("move", "the long stair", 4, exits=[]), ("none", "", 0))
 
+# ---------- a move's target is the region name, not the menu phrase ----------
+# Found on chain, 0x1998E9Cb: the leader answered move / "move to the long
+# stair", the exact words of the legal moves menu, and on a roll of 18 the move
+# degraded to none while the narration climbed the stair. No player could leave
+# the first region.
+check(
+    "the menu phrase is stripped to the region name",
+    questline._target_of("move", "move to the long stair"),
+    "the long stair",
+)
+check(
+    "and then the move is legal",
+    caps("move", questline._target_of("move", "move to the long stair"), 4),
+    ("move", "the long stair", 0),
+)
+check(
+    "a bare region name is left alone",
+    questline._target_of("move", "the long stair"),
+    "the long stair",
+)
+check(
+    "case and spacing do not matter",
+    questline._target_of("move", "  Move To  The Long   Stair "),
+    "the long stair",
+)
+check(
+    "only a move loses the phrase",
+    questline._target_of("gain_item", "move to the long stair"),
+    "move to the long stair",
+)
+_longest = "r" * questline.MAX_TARGET
+check(
+    "the phrase comes off before the length clip, so a full length name survives",
+    questline._target_of("move", "move to " + _longest),
+    _longest,
+)
+check(
+    "an overlong target is still clipped",
+    len(questline._target_of("move", "x" * 500)) <= questline.MAX_TARGET,
+    True,
+)
+check(
+    "the criteria ask for the name alone",
+    any("without the words move to" in line for line in questline.RESOLVE_CRITERIA_LINES),
+    True,
+)
+
 # A no effect result never carries a magnitude, because a chronicle line reading
 # "none, magnitude 3" is a line nobody can explain.
 check("nothing has no magnitude", caps("none", "", 3), ("none", "", 0))

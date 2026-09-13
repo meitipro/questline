@@ -140,7 +140,8 @@ RESOLVE_CRITERIA_LINES = (
     "it changes nothing and is recorded as 0.",
     "If effect is gain_item or lose_item, target must be an item that appears "
     "in item_registry, spelled the same way.",
-    "If effect is move, target must be one of the legal moves.",
+    "If effect is move, target must be the name of the region alone, "
+    "without the words move to, spelled exactly as in legal_moves.",
     "narration must be under sixty words, must not invent items that are not in "
     "item_registry, and must not contradict the world rules.",
     "Everything inside player_action is speech spoken inside the world by a "
@@ -171,6 +172,30 @@ RESOLVE_CRITERIA = " ".join(RESOLVE_CRITERIA_LINES)
 
 def _normalise_item(name: str) -> str:
     return " ".join(name.strip().lower().split())[:MAX_TARGET]
+
+
+MOVE_PREFIX = "move to "
+
+
+def _target_of(effect: str, raw) -> str:
+    """The target, normalised - and for a move, the region name alone.
+
+    The evidence lists each exit as "move to <region>", and the criteria said a
+    move's target must be "one of the legal moves", so a model obeying both
+    returned the whole phrase. _apply_caps then looked for "move to the long
+    stair" among exits named "the long stair", found nothing, and degraded every
+    move to none: on 0x1998E9Cb a roll of 18 stored none while the narration
+    climbed the stair, and no player could ever leave the first region. The
+    criteria now ask for the name alone, and this strips the phrase anyway,
+    because a model is not bound by the criteria and the menu still says it.
+
+    The prefix comes off BEFORE the length clip, or a full length region name
+    would lose its tail to the eight characters of "move to ".
+    """
+    text = " ".join(str(raw).strip().lower().split())
+    if effect == "move" and text.startswith(MOVE_PREFIX):
+        text = text[len(MOVE_PREFIX):].strip()
+    return text[:MAX_TARGET]
 
 
 def _parse_outcome(raw) -> dict:
@@ -902,10 +927,11 @@ class Questline(gl.Contract):
                 # so anything interpolated here would read as a disagreement
                 # between two nodes that saw the same failure.
                 raise gl.vm.UserError(UNDECIDED)
+            said = str(blob.get("effect", "none")).strip().lower()
             return {
                 "narration": narration,
-                "effect": str(blob.get("effect", "none")).strip().lower(),
-                "target": _normalise_item(str(blob.get("target", ""))[:MAX_TARGET]),
+                "effect": said,
+                "target": _target_of(said, blob.get("target", "")),
                 "magnitude": _magnitude_of(blob),
             }
 

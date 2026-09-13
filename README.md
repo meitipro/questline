@@ -167,6 +167,13 @@ action.
    carry cannot be granted twice.
 5. **Exits matched against the region, not against plausibility.** You move to a
    published exit or you do not move.
+   *Correction, 2026-09-14:* until then nobody moved at all. The evidence lists
+   each exit as "move to the long stair", the criteria said a move's target must
+   be one of the legal moves, and the model obeyed both by returning the whole
+   phrase - which matches no exit, so every move degraded to none. Found on
+   chain on 0x1998E9Cb, where a roll of 18 stored none while the narration
+   climbed the stair. The criteria now ask for the region name alone, and
+   `_target_of` strips the phrase regardless.
 6. **Independent resolvers who must agree.** Every validator resolves the action
    itself and the result only stands where the state changes match.
 7. **A public line either way.** Undecided actions are published like any other,
